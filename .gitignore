@@ -1,0 +1,7 @@
+.vscode/
+.pytest_cache
+__pycache__
+.coverage
+dbkey.json
+coverage.xml
+awskey.json
