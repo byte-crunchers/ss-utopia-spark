@@ -5,6 +5,7 @@ import jaydebeapi
 import traceback
 
 import transactions.transaction_consumer as trans_c
+import transactions.card_transaction_consumer as card_c
 
 import os
 import json
@@ -31,6 +32,8 @@ def processMessage(message: str) -> None:
         mdict = json.loads(message)
         if mdict['type'] == 'transaction':
             trans_c.consume(mdict, conn)
+        if mdict['type'] == 'card_transaction':
+            card_c.consume(mdict, conn)
         else:
             print("unrecognized type")
         conn.commit()
@@ -59,5 +62,4 @@ def consume():
     print("end of script")
 
 if __name__ == "__main__":
-    #conn = connect()
     consume()
