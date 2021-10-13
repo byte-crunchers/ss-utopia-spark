@@ -33,23 +33,20 @@ def test_already_processed(connect_h2):
     
 def test_inactive(connect_h2):
     curs = connect_h2.cursor()
-    curs.execute("SELECT * FROM transactions WHERE origin_account = 9001")
-    assert not curs.fetchall()
+    curs.execute("DELETE FROM transactions")
     
     curs.execute("INSERT INTO accounts VALUES (9001, 1, 'Savings', 100.00, 0, null, null, 0, 1, 1, 1), \
                                               (9002, 2, 'Checking', 500.00, 0, null, null, 0, 0, 1, 1)")
-    trans = {"origin_accounts_id": 9001, "destination_accounts_id": 9002, "memo": "That I may rise and stand, o'erthrow me, and bend", "transfer_value": 121.12, "time_stamp": "2021-10-06 11:28:47.209401", "status": 0, "type": "transaction"}
+    trans = {"origin_accounts_id": 9001, "destination_accounts_id": 9002, "memo": "That I may rise and stand, o'erthrow me, and bend", "transfer_value": 80.12, "time_stamp": "2021-10-06 11:28:47.209401", "status": 0, "type": "transaction"}
     tc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM transactions WHERE origin_account = 9001")
-    assert not curs.fetchall()
+    assert curs.fetchall()[0][6] == -2 #status code for inactive
     connect_h2.rollback()
 
 def test_good(connect_h2):
     curs = connect_h2.cursor()
-    curs.execute("SELECT * FROM transactions WHERE origin_account = 9001")
-    results = curs.fetchall()
-    assert not results
+    curs.execute("DELETE FROM transactions")
     
     curs.execute("INSERT INTO accounts VALUES (9001, 1, 'Savings', 100.00, 0, null, null, 0, 1, 1, 1), \
                                               (9002, 2, 'Checking', 500.00, 0, null, null, 0, 1, 1, 1)")

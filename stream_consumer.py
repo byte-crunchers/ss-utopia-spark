@@ -5,7 +5,7 @@ import jaydebeapi
 import traceback
 
 import transactions.transaction_consumer as trans_c
-import transactions.card_transaction_consumer as card_c
+import card_transactions.card_transaction_consumer as card_c
 
 import os
 import json

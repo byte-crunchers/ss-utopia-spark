@@ -6,6 +6,7 @@ import datetime
 from dateutil import parser as date_parse
 
 class TransactionStatus(IntEnum):
+    accepted = 0
     insufficient_funds = -1
     inactive_account = -2
     expired = -3
@@ -35,7 +36,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         if not origin.active or not dest.active:
             print("transaction rejected - inactive account")
             trans.status = TransactionStatus.inactive_account
-            return
+            return record_anomoly(trans, conn)
 
         #Make sure there's enough money
         if (origin.limit):
@@ -45,12 +46,12 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         if av_funds < trans.value:
             print("transaction rejected - not enough funds")
             trans.status = TransactionStatus.insufficient_funds
-            return
+            return record_anomoly(trans, conn)
 
         if datetime.datetime.now() > date_parse.parse(card.exp):
             print ("transaction rejected - expired card")
             trans.status = TransactionStatus.expired
-            return
+            return record_anomoly(trans, conn)
 
         if trans.cvc1: #in person
             if trans.cvc1 != card.cvc1:
@@ -130,3 +131,15 @@ class Account:
         self.active = row[8]
         self.approved = row[9]
         self.confirmed = row[10]
+
+#used to record an unsuccessful transaction. Should be followed by a return so the transaction is not recorded twice
+def record_anomoly(trans: Card_Transaction, conn: jaydebeapi.Connection):
+    try:
+            curs = conn.cursor()
+            query = 'INSERT INTO card_transactions(card_num, merchant_account_id, memo, transfer_value, pin, cvc1, cvc2, location, time_stamp, status) VALUES (?,?,?,?,?,?,?,?,?,?)'
+            vals = (trans.card, trans.acc, trans.memo, trans.value, trans.pin, trans.cvc1, trans.cvc2, trans.location, date_to_string(trans.time_stamp), trans.status)
+            curs.execute(query, vals)
+    except:
+            print("could not write transaction")
+            conn.rollback()
+    return
