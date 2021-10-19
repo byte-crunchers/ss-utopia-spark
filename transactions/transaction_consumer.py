@@ -1,5 +1,6 @@
 import jaydebeapi
 import traceback
+import sys
 
 class Transaction:
     
@@ -70,10 +71,10 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             curs.execute(query, vals)
             print("submitted transaction")
         except:
-            print("could not write transaction")
+            print("could not write transaction", file=sys.stderr)
             conn.rollback()
     except:
-        print("failed to process transaction")
+        print("failed to process transaction", file=sys.stderr)
         traceback.print_exc()
 
 #used to record an unsuccessful transaction. Should be followed by a return so the transaction is not recorded twice
@@ -84,7 +85,7 @@ def record_anomoly(trans: Transaction, conn: jaydebeapi.Connection):
             vals = (trans.origin, trans.destination, trans.memo, trans.value, date_to_string(trans.time_stamp), trans.status)
             curs.execute(query, vals)
     except:
-            print("could not write transaction")
+            print("could not write transaction", file=sys.stderr)
             conn.rollback()
     return
 
