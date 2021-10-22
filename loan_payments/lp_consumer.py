@@ -4,11 +4,14 @@ from enum import IntEnum
 import jaydebeapi
 
 
+
 class PaymentStatus(IntEnum):
-    processed = 1
+    accepted = 1
     unprocessed = 0
     insufficient_funds = -1
     inactive_dependent = -2
+    invalid_account_type = -5
+    payment_too_large = -6
 
 
 def consume(message: dict, conn: jaydebeapi.Connection) -> None:
@@ -37,16 +40,35 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         except:
             print("Could not find associated loan")
 
+        # Check if the Account type is invalid for loan payments
+        if account.account_type != "Savings" and account.account_type != "Checking":
+            loan_payment.status = PaymentStatus.invalid_account_type
+            print("Invalid account type")
+            return record_anomaly(loan_payment, conn)
+
         # Check there is enough money in the account for the payment
         if account.balance < loan_payment.amount:
             loan_payment.status = PaymentStatus.insufficient_funds
-            record_anomoly(loan_payment, conn)
             print("Insufficient funds, loan payment rejected")
+            return record_anomaly(loan_payment, conn)
 
+        # Check if account or loan is inactive
+        if not account.active or not loan.active:
+            loan_payment.status = PaymentStatus.inactive_dependent
+            print("Either Loan or Account is inactive, loan payment rejected")
+            return record_anomaly(loan_payment, conn)
 
+        # Check if the loan payment is too large (greater than loan balance)
+        if loan_payment.amount > -loan.balance:
+            loan_payment.status = PaymentStatus.payment_too_large
+            print("The payment is larger than the loan balance, loan payment rejected")
+            return record_anomaly(loan_payment, conn)
+
+        # If all the above condition checks pass, consume the valid loan payment
+        loan_payment.status = PaymentStatus.accepted
+        record_loan_payment(loan_payment, account, loan, conn)
     except:
         print("failed to process transaction")
-        traceback.print_exc()
 
 
 class LoanPayment:
@@ -95,16 +117,21 @@ def date_to_string(date):  # differs from str(date) in that it accepts none
 
 
 # Used to record a successful transaction.
-def record_loan_payment(loan_payment: LoanPayment, conn: jaydebeapi.Connection):
+def record_loan_payment(loan_payment: LoanPayment, account: Account, loan: Loan, conn: jaydebeapi.Connection):
     try:
-        loan_payment.status = PaymentStatus.processed
         curs = conn.cursor()
+        query = 'UPDATE accounts SET balance = balance - ? WHERE id = ?'
+        curs.execute(query, (loan_payment.amount, account.id))
+        query = 'UPDATE loans SET balance = balance + ? WHERE id = ?'
+        curs.execute(query, (loan_payment.amount, loan.id))
+
         query = 'INSERT INTO loan_payments(loan_id, account_id, amount, time_stamp, status) VALUES (?,?,?,?,?)'
         vals = (
             loan_payment.loan_id, loan_payment.account_id, loan_payment.amount,
             date_to_string(loan_payment.time_stamp),
             loan_payment.status)
         curs.execute(query, vals)
+        loan_payment.status = PaymentStatus.accepted
         print("Successful payment recorded!")
     except:
         print("could not write transaction")
@@ -113,7 +140,7 @@ def record_loan_payment(loan_payment: LoanPayment, conn: jaydebeapi.Connection):
 
 
 # Used to record an unsuccessful transaction. Should be followed by a return so the transaction is not recorded twice
-def record_anomoly(loan_payment: LoanPayment, conn: jaydebeapi.Connection):
+def record_anomaly(loan_payment: LoanPayment, conn: jaydebeapi.Connection):
     try:
         curs = conn.cursor()
         query = 'INSERT INTO loan_payments(loan_id, account_id, amount, time_stamp, status) VALUES (?,?,?,?,?)'
