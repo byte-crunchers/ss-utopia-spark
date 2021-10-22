@@ -4,9 +4,10 @@ import traceback
 from enum import IntEnum
 import datetime
 from dateutil import parser as date_parse
+import sys
 
 class TransactionStatus(IntEnum):
-    accepted = 0
+    accepted = 1
     insufficient_funds = -1
     inactive_account = -2
     expired = -3
@@ -80,11 +81,11 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             curs.execute(query, vals)
             print("submitted transaction")
         except:
-            print("could not write transaction")
+            print("could not write transaction", file=sys.stderr)
             traceback.print_exc()
             conn.rollback()
     except:
-        print("failed to process transaction")
+        print("failed to process transaction", file=sys.stderr)
         traceback.print_exc()
 
 def check_null(string: str) -> str:
@@ -140,6 +141,6 @@ def record_anomoly(trans: Card_Transaction, conn: jaydebeapi.Connection):
             vals = (trans.card, trans.acc, trans.memo, trans.value, trans.pin, trans.cvc1, trans.cvc2, trans.location, date_to_string(trans.time_stamp), trans.status)
             curs.execute(query, vals)
     except:
-            print("could not write transaction")
+            print("could not write transaction", file=sys.stderr)
             conn.rollback()
     return
