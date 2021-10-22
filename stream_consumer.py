@@ -30,6 +30,7 @@ def connect():
 
 def process_message(message: str) -> None:
     conn = connect()
+    print("made it")
     try:
 
         mdict = json.loads(message)
@@ -52,7 +53,7 @@ def consume():
 
     sc = SparkContext(appName="TransactionConsumer")
     ssc = StreamingContext(sc, 5)
-    stream = KinesisUtils.createStream(ssc, "TransactionConsumer", "byte-henry", \
+    stream = KinesisUtils.createStream(ssc, "TransactionConsumer2", "byte-henry", \
                                        "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
                                        InitialPositionInStream.LATEST, 2, \
                                        awsAccessKeyId=os.environ.get("ACCESS_KEY"),
