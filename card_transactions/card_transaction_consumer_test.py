@@ -42,7 +42,7 @@ def test_inactive(connect_h2):
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")
-    assert curs.fetchall()[0][10] == ctc.PaymentStatus.inactive_account
+    assert curs.fetchall()[0][10] == ctc.TransactionStatus.inactive_account
     connect_h2.rollback()
 
 
@@ -60,7 +60,7 @@ def test_not_enough(connect_h2):
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")
-    assert curs.fetchall()[0][10] == ctc.PaymentStatus.insufficient_funds
+    assert curs.fetchall()[0][10] == ctc.TransactionStatus.insufficient_funds
     connect_h2.rollback()
 
 
@@ -76,7 +76,7 @@ def test_expired(connect_h2):
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")
-    assert curs.fetchall()[0][10] == ctc.PaymentStatus.expired
+    assert curs.fetchall()[0][10] == ctc.TransactionStatus.expired
     connect_h2.rollback()
 
 def test_invalid(connect_h2):
@@ -91,7 +91,7 @@ def test_invalid(connect_h2):
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")
-    assert curs.fetchall()[0][10] == ctc.PaymentStatus.invalid
+    assert curs.fetchall()[0][10] == ctc.TransactionStatus.invalid
     connect_h2.rollback()
 
 def test_good(connect_h2):
@@ -106,7 +106,7 @@ def test_good(connect_h2):
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")
-    assert curs.fetchall()[0][10] == ctc.PaymentStatus.accepted
+    assert curs.fetchall()[0][10] == ctc.TransactionStatus.accepted
     
     curs.execute("SELECT balance FROM accounts WHERE id = 9002")
     assert curs.fetchall()[0][0] == 80.00
@@ -127,7 +127,7 @@ def test_good_credit(connect_h2):
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")
-    assert curs.fetchall()[0][10] == ctc.PaymentStatus.accepted
+    assert curs.fetchall()[0][10] == ctc.TransactionStatus.accepted
     
     curs.execute("SELECT balance FROM accounts WHERE id = 9003")
     assert curs.fetchall()[0][0] == -3000.00
