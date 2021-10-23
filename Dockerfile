@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -37,9 +36,8 @@ RUN pip install --no-cache-dir -r /opt/spark/work-dir/requirements.txt
 
 ENV PYSPARK_PYTHON=python3
 ENV MYSQL_JAR=/opt/spark/jars/mysql-connector-java-8.0.25.jar
-ENV MYSQL_LOC=jdbc:MySQL://host.docker.internal/bytecrunchers
-ENV MYSQL_USER=root
-ENV MYSQL_PASS=root
+ENV MYSQL_LOC=jdbc:MySQL:ss-utopia-database.c4s2dcothp1t.us-east-1.rds.amazonaws.com
+
 
 
 COPY python/pyspark ${SPARK_HOME}/python/pyspark
