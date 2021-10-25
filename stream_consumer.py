@@ -56,12 +56,11 @@ def consume():
         'PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'
     sc = SparkContext(appName="TransactionConsumer")
     ssc = StreamingContext(sc, 5)
-    stream = KinesisUtils.createStream(ssc, "Wyatts_Consumer", "byte-henry",
-                                       "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
-                                       InitialPositionInStream.LATEST, 2,
-                                       awsAccessKeyId=os.environ.get("ACCESS_KEY"),
-                                       awsSecretKey=os.environ.get("SECRET_KEY"))
-
+    stream = KinesisUtils.createStream(ssc, os.environ.get("CONSUMER_NAME"), "byte-henry", \
+                                        "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
+                                        InitialPositionInStream.LATEST, 2, \
+                                        awsAccessKeyId=os.environ.get("ACCESS_KEY"),
+                                        awsSecretKey=os.environ.get("SECRET_KEY"))    
     stream.foreachRDD(lambda x: x.foreach(process_message))
     print("submitting")
     ssc.start()
