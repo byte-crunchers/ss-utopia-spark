@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import traceback
 
 import jaydebeapi
@@ -9,9 +10,9 @@ from pyspark.streaming.kinesis import KinesisUtils, InitialPositionInStream
 
 import card_transactions.card_transaction_consumer as card_c
 import loan_payments.lp_consumer as loan_payment_c
+import stocks.stock_consumer as stock_c
 import transactions.transaction_consumer as trans_c
 
-import sys
 
 def connect():
     mysql_pass = os.environ.get("MYSQL_PASS")
@@ -25,7 +26,8 @@ def connect():
         con_try.jconn.setAutoCommit(False)
     except:
         traceback.print_exc()
-        print("There was a problem connecting to the database, please make sure the database information is correct!", file=sys.stderr)
+        print("There was a problem connecting to the database, please make sure the database information is correct!",
+              file=sys.stderr)
     return con_try
 
 
@@ -33,7 +35,6 @@ def process_message(message: str) -> None:
     conn = connect()
     if conn:
         try:
-        
             mdict = json.loads(message)
             if mdict['type'] == 'transaction':
                 trans_c.consume(mdict, conn)
@@ -41,15 +42,18 @@ def process_message(message: str) -> None:
                 card_c.consume(mdict, conn)
             if mdict['type'] == 'loan_payment':
                 loan_payment_c.consume(mdict, conn)
+            if mdict['type'] == 'stock':
+                stock_c.consume(mdict, conn)
             else:
                 print("unrecognized type")
             conn.commit()
-          except:
-              print('unable to parse message:\n {}\n'.format(message), file=sys.stderr)
+        except:
+            print('unable to parse message:\n {}\n'.format(message), file=sys.stderr)
+
 
 def consume():
-    #os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'
-
+    os.environ[
+        'PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'
     sc = SparkContext(appName="TransactionConsumer")
     ssc = StreamingContext(sc, 5)
     stream = KinesisUtils.createStream(ssc, os.environ.get("CONSUMER_NAME"), "byte-henry", \
@@ -57,8 +61,6 @@ def consume():
                                         InitialPositionInStream.LATEST, 2, \
                                         awsAccessKeyId=os.environ.get("ACCESS_KEY"),
                                         awsSecretKey=os.environ.get("SECRET_KEY"))    
-
-
     stream.foreachRDD(lambda x: x.foreach(process_message))
     print("submitting")
     ssc.start()
