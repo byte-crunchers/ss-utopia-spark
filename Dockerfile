@@ -35,8 +35,8 @@ RUN pip install --no-cache-dir -r /opt/spark/work-dir/requirements.txt
 
 
 ENV PYSPARK_PYTHON=python3
-ENV MYSQL_JAR=/opt/spark/jars/mysql-connector-java-8.0.25.jar
-ENV MYSQL_LOC=jdbc:MySQL:ss-utopia-database.c4s2dcothp1t.us-east-1.rds.amazonaws.com
+ENV MYSQL_JAR=/opt/spark/jars/mysql.jar
+ENV MYSQL_LOC=jdbc:mysql://ss-utopia-database.c4s2dcothp1t.us-east-1.rds.amazonaws.com/bytecrunchers
 
 
 

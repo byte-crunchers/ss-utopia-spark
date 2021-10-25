@@ -24,7 +24,7 @@ pipeline {
                     dir('ss-utopia-spark'){
                         git branch: 'feature/jenkins', url: 'https://github.com/byte-crunchers/ss-utopia-spark'
                     }
-                    sh 'mv -f ss-utopia-spark/kubernetes/dockerfiles/spark/bindings/python/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
+                    sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
                     //sh 'rsync -a ./ss-utopia-spark/kubernetes ./spark/kubernetes'
                 }
             }
@@ -46,7 +46,7 @@ pipeline {
                             docker.image("ss-utopia-spark/spark-py:latest").push()
                         }
                     }
-                    //sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com'
+                    //sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 422288715120.dkr.ecr.us-east-1.amazonaws.com'
                     //sh 'docker push 422288715120.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest'
                 }
             }
