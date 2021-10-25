@@ -22,7 +22,7 @@ pipeline {
                 dir('spark-stuff'){
                     sh 'ls'
                     dir('ss-utopia-spark'){
-                        git branch: 'feature/jenkins', url: 'https://github.com/byte-crunchers/ss-utopia-spark'
+                        git branch: 'develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark'
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
                     //sh 'rsync -a ./ss-utopia-spark/kubernetes ./spark/kubernetes'
