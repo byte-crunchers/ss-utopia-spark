@@ -2,6 +2,7 @@ import traceback
 from enum import IntEnum
 
 import jaydebeapi
+import pandas as pd
 
 
 class StockStatus(IntEnum):
@@ -33,6 +34,10 @@ class Stock:
 def consume(message: dict, conn: jaydebeapi.Connection) -> None:
     try:
         stock = Stock(message)
+
+        #  Properly format null market caps
+        if pd.isna(stock.market_cap):
+            stock.market_cap = 0
 
         # Make sure Stock hasn't already been processed
         if stock.status != 0:
