@@ -38,11 +38,11 @@ def process_message(message: str) -> None:
             mdict = json.loads(message)
             if mdict['type'] == 'transaction':
                 trans_c.consume(mdict, conn)
-            if mdict['type'] == 'card_transaction':
+            elif mdict['type'] == 'card_transaction':
                 card_c.consume(mdict, conn)
-            if mdict['type'] == 'loan_payment':
+            elif mdict['type'] == 'loan_payment':
                 loan_payment_c.consume(mdict, conn)
-            if mdict['type'] == 'stock':
+            elif mdict['type'] == 'stock':
                 stock_c.consume(mdict, conn)
             else:
                 print("unrecognized type")

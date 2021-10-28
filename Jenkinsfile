@@ -10,10 +10,20 @@ pipeline {
                 sh "mv -f 'spark-3.2.0-bin-hadoop3.2' spark-stuff "
                 dir ('spark-stuff'){
                     sh 'curl -o mysql.jar https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.27/mysql-connector-java-8.0.27.jar'
-                    sh 'ls'
                     sh 'mv -f mysql.jar jars/mysql.jar'
                     sh 'curl -o spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar http://ss-utopia-build-resources.s3.amazonaws.com/jars/spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar'
                     sh 'mv spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar jars/spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar'
+                }
+                sh 'systemctl start docker'
+            }
+        }
+        stage('Get Secrets'){
+            steps {
+                script {
+                    env.MYSQL_USER = sh ( script: 'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."user"', returnStdout: true)
+                    env.MYSQL_PASS = sh(script: 'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."pass"',returnStdout: true)
+                    env.MYSQL_LOC = sh(script: 'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."location"',returnStdout: true)
+                    env.ACC_ID = sh(script:'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."account_id"', returnStdout: true)
                 }
             }
         }
@@ -22,10 +32,9 @@ pipeline {
                 dir('spark-stuff'){
                     sh 'ls'
                     dir('ss-utopia-spark'){
-                        git branch: 'develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark'
+                        git branch: 'feature/jenkins2', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
-                    //sh 'rsync -a ./ss-utopia-spark/kubernetes ./spark/kubernetes'
                 }
             }
         }
@@ -45,9 +54,46 @@ pipeline {
                         docker.withRegistry("https://422288715120.dkr.ecr.us-east-1.amazonaws.com", "ecr:us-east-1:jenkins-ec2-user") {
                             docker.image("ss-utopia-spark/spark-py:latest").push()
                         }
-                    }
-                    //sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 422288715120.dkr.ecr.us-east-1.amazonaws.com'
-                    //sh 'docker push 422288715120.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest'
+                    }//prune
+                    //sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com'
+                    //sh 'docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest'
+                }
+            }
+        }
+        stage('Create Cluster'){
+            steps{
+                //This command will skip if cluster 'Spark' already exists
+                sh 'eksctl create cluster --region us-east-1 --zones us-east-1a,us-east-1b,us-east-1c --name Spark --fargate 2> /dev/null'
+                sh 'kubectl create serviceaccount spark' //needed so the driver can create more pods
+                sh 'kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default'
+
+                script{
+                    //save cluster endpoint
+                    env.CLUSTER = sh ( script: 'aws eks describe-cluster --name Spark | jq --raw-output .cluster |jq --raw-output .endpoint', returnStdout: true)
+                }
+
+
+            }
+        }
+        stage('Deploy'){
+            steps{
+                dir('spark-stuff'){
+                    sh './bin/spark-submit --master k8s://${CLUSTER} 
+                    --deploy-mode cluster 
+                    --name byte-consumer 
+                    --conf spark.executor.instances = 2  
+                    --conf spark.kubernetes.executor.limit.cores=1 
+                    --conf spark.kubernetes.driver.limit.cores=1 
+                    --conf spark.kubernetes.driver.pod.name = driver 
+                    --conf spark.kubernetes.driverEnv.ACCESS_KEY = ${ACCESS_KEY} 
+                    --conf spark.kubernetes.driverEnv.SECRET_KEY = ${SECRET_KEY} 
+                    --conf spark.executorEnv.MYSQL_USER = ${MYSQL_USER} 
+                    --conf spark.executorEnv.MYSQL_PASS = ${MYSQL_PASS}  
+                    --conf spark.kubernetes.driverEnv.CONSUMER_NAME = cloud-consumer 
+                    --conf spark.kubernetes.authenticate.driver.serviceAccountName = spark 
+                    --conf spark.kubernetes.container.image.pullPolicy = Always 
+                    --conf spark.kubernetes.container.image = ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest 
+                    local:///opt/spark/work-dir/stream_consumer.py'
                 }
             }
         }
