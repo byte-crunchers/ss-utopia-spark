@@ -14,7 +14,6 @@ pipeline {
                     sh 'curl -o spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar http://ss-utopia-build-resources.s3.amazonaws.com/jars/spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar'
                     sh 'mv spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar jars/spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar'
                 }
-                sh 'systemctl start docker'
             }
         }
         stage('Get Secrets'){
@@ -63,9 +62,11 @@ pipeline {
         stage('Create Cluster'){
             steps{
                 //This command will skip if cluster 'Spark' already exists
-                sh 'eksctl create cluster --region us-east-1 --zones us-east-1a,us-east-1b,us-east-1c --name Spark --fargate 2> /dev/null'
-                sh 'kubectl create serviceaccount spark' //needed so the driver can create more pods
-                sh 'kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default'
+                sh 'export PATH=$PATH:/usr/local/bin/' //I need to do this so that eksctl is recognized
+                sh 'eksctl create cluster --region us-east-1 --zones us-east-1a,us-east-1b,us-east-1c --name Spark --fargate || true 2> /dev/null'
+                sh 'aws eks --region us-east-1 update-kubeconfig --name Spark'
+                sh 'kubectl create serviceaccount spark || true 2> /dev/null' //needed so the driver can create more pods
+                sh 'kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default || true 2> /dev/null'
 
                 script{
                     //save cluster endpoint
@@ -78,21 +79,22 @@ pipeline {
         stage('Deploy'){
             steps{
                 dir('spark-stuff'){
-                    sh './bin/spark-submit --master k8s://${CLUSTER} 
-                    --deploy-mode cluster 
-                    --name byte-consumer 
-                    --conf spark.executor.instances = 2  
-                    --conf spark.kubernetes.executor.limit.cores=1 
-                    --conf spark.kubernetes.driver.limit.cores=1 
-                    --conf spark.kubernetes.driver.pod.name = driver 
-                    --conf spark.kubernetes.driverEnv.ACCESS_KEY = ${ACCESS_KEY} 
-                    --conf spark.kubernetes.driverEnv.SECRET_KEY = ${SECRET_KEY} 
-                    --conf spark.executorEnv.MYSQL_USER = ${MYSQL_USER} 
-                    --conf spark.executorEnv.MYSQL_PASS = ${MYSQL_PASS}  
-                    --conf spark.kubernetes.driverEnv.CONSUMER_NAME = cloud-consumer 
-                    --conf spark.kubernetes.authenticate.driver.serviceAccountName = spark 
-                    --conf spark.kubernetes.container.image.pullPolicy = Always 
-                    --conf spark.kubernetes.container.image = ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest 
+                    //For this we're using Apache's native spark-submit tool. It has a lot of options.
+                    sh './bin/spark-submit --master k8s://${CLUSTER} \
+                    --deploy-mode cluster \
+                    --name byte-consumer \
+                    --conf spark.executor.instances=2  \
+                    --conf spark.kubernetes.executor.limit.cores=1\
+                    --conf spark.kubernetes.driver.limit.cores=1 \
+                    --conf spark.kubernetes.driver.pod.name=driver \
+                    --conf spark.kubernetes.driverEnv.ACCESS_KEY=${ACCESS_KEY} \
+                    --conf spark.kubernetes.driverEnv.SECRET_KEY=${SECRET_KEY} \
+                    --conf spark.executorEnv.MYSQL_USER=${MYSQL_USER} \
+                    --conf spark.executorEnv.MYSQL_PASS=${MYSQL_PASS}  \
+                    --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
+                    --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
+                    --conf spark.kubernetes.container.image.pullPolicy=Always \
+                    --conf spark.kubernetes.container.image=${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest \
                     local:///opt/spark/work-dir/stream_consumer.py'
                 }
             }

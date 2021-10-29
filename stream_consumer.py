@@ -67,7 +67,8 @@ def consume():
     print("done")
     ssc.awaitTermination()
     print("end of script")
-
+    ssc.stop()
+    sc.stop()
 
 if __name__ == "__main__":
     consume()
