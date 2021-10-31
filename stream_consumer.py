@@ -64,6 +64,7 @@ def consume():
     stream.foreachRDD(lambda x: x.foreach(process_message))
     print("submitting")
     ssc.start()
+    sc.setLogLevel("ERROR")
     print("done")
     ssc.awaitTermination()
     print("end of script")

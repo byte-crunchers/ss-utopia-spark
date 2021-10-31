@@ -22,7 +22,8 @@ pipeline {
                     env.MYSQL_USER = sh ( script: 'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."user"', returnStdout: true)
                     env.MYSQL_PASS = sh(script: 'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."pass"',returnStdout: true)
                     env.MYSQL_LOC = sh(script: 'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."location"',returnStdout: true)
-                    env.ACC_ID = sh(script:'aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."account_id"', returnStdout: true)
+                    //If I don't do ACC_ID this way, Jenkins puts a space in front of it. I know not why
+                    sh(script:'ACC_ID=$(aws secretsmanager get-secret-value --secret-id spark  | jq --raw-output .SecretString | jq -r ."account_id")')
                 }
             }
         }
@@ -67,7 +68,9 @@ pipeline {
                 sh 'aws eks --region us-east-1 update-kubeconfig --name Spark'
                 sh 'kubectl create serviceaccount spark || true 2> /dev/null' //needed so the driver can create more pods
                 sh 'kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default || true 2> /dev/null'
-
+                //give access to henry
+                sh 'eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/henry.admin --group system:masters --username admin'
+                sh 'kubectl delete pods --all' //if spark is already running, kill it
                 script{
                     //save cluster endpoint
                     env.CLUSTER = sh ( script: 'aws eks describe-cluster --name Spark | jq --raw-output .cluster |jq --raw-output .endpoint', returnStdout: true)
@@ -86,9 +89,12 @@ pipeline {
                     --conf spark.executor.instances=2  \
                     --conf spark.kubernetes.executor.limit.cores=1\
                     --conf spark.kubernetes.driver.limit.cores=1 \
+                    --conf spark.kubernetes.submission.waitAppCompletion=false \
                     --conf spark.kubernetes.driver.pod.name=driver \
                     --conf spark.kubernetes.driverEnv.ACCESS_KEY=${ACCESS_KEY} \
                     --conf spark.kubernetes.driverEnv.SECRET_KEY=${SECRET_KEY} \
+                    --conf spark.executorEnv.ACCESS_KEY=${ACCESS_KEY} \
+                    --conf spark.executorEnv.SECRET_KEY=${SECRET_KEY} \
                     --conf spark.executorEnv.MYSQL_USER=${MYSQL_USER} \
                     --conf spark.executorEnv.MYSQL_PASS=${MYSQL_PASS}  \
                     --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
