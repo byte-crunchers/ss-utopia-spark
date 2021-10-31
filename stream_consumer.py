@@ -83,6 +83,8 @@ def consumeRDD(rdd: RDD) -> None:
 
     for message in rdd.toLocalIterator():
         t = threading.Thread(target=process_message, args=(message,lock, threadPool))
+        while(threadPool[0] <= 0): #This soft lock should prevent Python from spawning too many threads
+            time.sleep(0.1) 
         t.start()
         threads.append(t)
 
