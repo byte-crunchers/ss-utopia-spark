@@ -88,7 +88,8 @@ def consumeRDD(rdd: RDD) -> None:
 
     for t in threads:
         t.join()
-    conn.close()
+    if conn:
+        conn.close()
 
 
 def consume():
