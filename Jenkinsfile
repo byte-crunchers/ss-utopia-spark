@@ -35,6 +35,7 @@ pipeline {
                         git branch: 'feature/jenkins2', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
+                    sh 'mv -f ss-utopia-spark/log4j.properties conf/log4j.properties'
                 }
             }
         }
