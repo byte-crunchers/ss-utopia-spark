@@ -87,8 +87,8 @@ pipeline {
                     --deploy-mode cluster \
                     --name byte-consumer \
                     --conf spark.executor.instances=2  \
-                    --conf spark.kubernetes.executor.limit.cores=1\
-                    --conf spark.kubernetes.driver.limit.cores=1 \
+                    --conf spark.kubernetes.executor.podNamePrefix=executor \
+                    --conf spark.kubernetes.executor.request.cores=2 \
                     --conf spark.kubernetes.submission.waitAppCompletion=false \
                     --conf spark.kubernetes.driver.pod.name=driver \
                     --conf spark.kubernetes.driverEnv.ACCESS_KEY=${AWS_ACCESS_KEY_ID} \
