@@ -91,12 +91,12 @@ pipeline {
                     --conf spark.kubernetes.driver.limit.cores=1 \
                     --conf spark.kubernetes.submission.waitAppCompletion=false \
                     --conf spark.kubernetes.driver.pod.name=driver \
-                    --conf spark.kubernetes.driverEnv.ACCESS_KEY=${ACCESS_KEY} \
-                    --conf spark.kubernetes.driverEnv.SECRET_KEY=${SECRET_KEY} \
-                    --conf spark.executorEnv.ACCESS_KEY=${ACCESS_KEY} \
-                    --conf spark.executorEnv.SECRET_KEY=${SECRET_KEY} \
+                    --conf spark.kubernetes.driverEnv.ACCESS_KEY=${AWS_ACCESS_KEY_ID} \
+                    --conf spark.kubernetes.driverEnv.SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
+                    --conf spark.kubernetes.driverEnv.AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
                     --conf spark.executorEnv.MYSQL_USER=${MYSQL_USER} \
                     --conf spark.executorEnv.MYSQL_PASS=${MYSQL_PASS}  \
+                    --conf spark.executorEnv.MYSQL_LOC=${MYSQL_LOC}  \
                     --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
                     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
                     --conf spark.kubernetes.container.image.pullPolicy=Always \
