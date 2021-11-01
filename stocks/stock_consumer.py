@@ -79,10 +79,7 @@ def record_stock(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-<<<<<<< HEAD
-=======
-        conn.close()
->>>>>>> ddef9ac2252340402baeb57c02f7a5e3d5e55ec8
+
     except:
         print("could not write transaction")
         traceback.print_exc()
