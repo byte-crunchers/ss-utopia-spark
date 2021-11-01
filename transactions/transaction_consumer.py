@@ -37,7 +37,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
     try:
         trans = Transaction(message)
         if (trans.status != 0): #make sure we haven't already processed it
-            print('transaction already processed')
+            #print('transaction already processed')
             return
         curs = conn.cursor()
         curs.execute("select * from accounts where id = ?", (trans.origin,))
@@ -47,7 +47,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
 
         #Make sure both accounts are active
         if not origin.active or not dest.active:
-            print("transaction rejected - inactive account")
+            #print("transaction rejected - inactive account")
             trans.status = -2
             return record_anomoly(trans, conn)
 
@@ -57,7 +57,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         else:
             av_funds = float(origin.balance)
         if av_funds < trans.value:
-            print("transaction rejected - not enough funds")
+            #print("transaction rejected - not enough funds")
             trans.status = -1
             return record_anomoly(trans, conn)
 
@@ -69,7 +69,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             query = 'INSERT INTO transactions(origin_account, destination_account, memo, transfer_value, time_stamp, status) VALUES (?,?,?,?,?,?)'
             vals = (trans.origin, trans.destination, trans.memo, trans.value, date_to_string(trans.time_stamp), 1) #trans status is one for successful transactions
             curs.execute(query, vals)
-            print("submitted transaction")
+            #print("submitted transaction")
         except:
             print("could not write transaction", file=sys.stderr)
             conn.rollback()

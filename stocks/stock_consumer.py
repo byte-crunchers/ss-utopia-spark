@@ -36,7 +36,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
 
         # Make sure Stock hasn't already been processed
         if stock.status != 0:
-            print("Stock already processed, skipping...")
+            #print("Stock already processed, skipping...")
             return
 
         # Check for illegal negatives
@@ -75,7 +75,7 @@ def record_stock(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        print("Successful stock recorded!")
+        #print("Successful stock recorded!")
     except:
         print("could not write transaction")
         traceback.print_exc()
@@ -93,7 +93,7 @@ def record_anomaly(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        print("Anomaly recorded! Status:  " + str(StockStatus(stock.status)))
+        #print("Anomaly recorded! Status:  " + str(StockStatus(stock.status)))
     except:
         print("could not write transaction")
         traceback.print_exc()
