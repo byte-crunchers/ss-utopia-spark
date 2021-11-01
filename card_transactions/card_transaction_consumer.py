@@ -12,6 +12,7 @@ class TransactionStatus(IntEnum):
     inactive_account = -2
     expired = -3
     invalid = -4
+    no_card = -7
 
 
 def date_to_string(date): #differs from str(date) in that it accepts none
@@ -23,11 +24,16 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
     try:
         trans = Card_Transaction(message)
         if (trans.status != 0): #make sure we haven't already processed it
-            print('transaction already processed')
+            #print('transaction already processed')
             return
         curs = conn.cursor()
         curs.execute("select * from cards where card_num = ?", (trans.card,))
-        card = Card(curs.fetchall()[0])
+        try:
+            card = Card(curs.fetchall()[0])
+        except:
+            #print("transaction rejected - no such card")
+            trans.status = TransactionStatus.no_card
+            return record_anomoly(trans, conn)
         curs.execute("select * from accounts where id = ?", (card.acc,))
         origin = Account(curs.fetchall()[0])
         curs.execute("select * from accounts where id = ?", (trans.acc,))
@@ -35,7 +41,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
 
         #Make sure both accounts and the card are active
         if not origin.active or not dest.active:
-            print("transaction rejected - inactive account")
+            #print("transaction rejected - inactive account")
             trans.status = TransactionStatus.inactive_account
             return record_anomoly(trans, conn)
 
@@ -45,27 +51,29 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         else:
             av_funds = float(origin.balance)
         if av_funds < trans.value:
-            print("transaction rejected - not enough funds")
+            #print("transaction rejected - not enough funds")
             trans.status = TransactionStatus.insufficient_funds
             return record_anomoly(trans, conn)
 
         if datetime.datetime.now() > date_parse.parse(card.exp):
-            print ("transaction rejected - expired card")
+            #print ("transaction rejected - expired card")
             trans.status = TransactionStatus.expired
             return record_anomoly(trans, conn)
 
         if trans.cvc1: #in person
             if trans.cvc1 != card.cvc1:
-                print ("invalid credentials")
+                #print ("invalid credentials")
                 trans.status = TransactionStatus.invalid
-            if card.pin:
-                if card.pin != trans.pin:                    
-                    print ("invalid credentials")
-                    trans.status = TransactionStatus.invalid
+                return record_anomoly(trans, conn)
+            if card.pin and card.pin != trans.pin:                    
+                #print ("invalid credentials")
+                trans.status = TransactionStatus.invalid
+                return record_anomoly(trans, conn)
         elif trans.cvc2: #online not amazon
             if trans.cvc2 != card.cvc2:
-                print ("invalid credentials")
+                #print ("invalid credentials")
                 trans.status = TransactionStatus.invalid
+                return record_anomoly(trans, conn)
         
 
 
@@ -77,9 +85,9 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             curs.execute(query, (trans.value, trans.acc))
             
             query = 'INSERT INTO card_transactions(card_num, merchant_account_id, memo, transfer_value, pin, cvc1, cvc2, location, time_stamp, status) VALUES (?,?,?,?,?,?,?,?,?,?)'
-            vals = (trans.card, trans.acc, trans.memo, trans.value, trans.pin, trans.cvc1, trans.cvc2, trans.location, date_to_string(trans.time_stamp), trans.status)
+            vals = (trans.card, trans.acc, trans.memo, trans.value, trans.pin, trans.cvc1, trans.cvc2, trans.location, date_to_string(trans.time_stamp), 1)
             curs.execute(query, vals)
-            print("submitted transaction")
+            #print("submitted transaction")
         except:
             print("could not write transaction", file=sys.stderr)
             traceback.print_exc()

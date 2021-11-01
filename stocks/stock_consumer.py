@@ -42,7 +42,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
 
         # Make sure Stock hasn't already been processed
         if stock.status != 0:
-            print("Stock already processed, skipping...")
+            #print("Stock already processed, skipping...")
             return
 
         # Check for illegal negatives
@@ -80,7 +80,6 @@ def record_stock(stock: Stock, conn: jaydebeapi.Connection):
         )
         curs.execute(query, vals)
         conn.close()
-
     except:
         print("could not write transaction")
         traceback.print_exc()

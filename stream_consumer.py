@@ -1,10 +1,12 @@
+import time
 import json
 import os
 import sys
 import traceback
+import threading
 
 import jaydebeapi
-from pyspark import SparkContext
+from pyspark import SparkContext, RDD
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kinesis import KinesisUtils, InitialPositionInStream
 
@@ -31,43 +33,85 @@ def connect():
     return con_try
 
 
-def process_message(message: str) -> None:
+def process_message(message: str, lock: threading.Lock, threadPool: int) -> None:
+    #make sure not to excede the max threads
+    while (threadPool[0] <= 0):
+        time.sleep(0.1) #rechecks every 100ms
+    lock.acquire()
+    threadPool[0] -= 1
+    lock.release()
     conn = connect()
     if conn:
         try:
             mdict = json.loads(message)
             if mdict['type'] == 'transaction':
                 trans_c.consume(mdict, conn)
-            if mdict['type'] == 'card_transaction':
+            elif mdict['type'] == 'card_transaction':
                 card_c.consume(mdict, conn)
-            if mdict['type'] == 'loan_payment':
+            elif mdict['type'] == 'loan_payment':
                 loan_payment_c.consume(mdict, conn)
-            if mdict['type'] == 'stock':
+            elif mdict['type'] == 'stock':
                 stock_c.consume(mdict, conn)
             else:
                 print("unrecognized type")
             conn.commit()
+
         except:
             print('unable to parse message:\n {}\n'.format(message), file=sys.stderr)
+        finally:
+            conn.close()
+            lock.acquire()
+            threadPool[0] += 1
+            lock.release()
+
+
+
+#Helper function to multithread this workload
+#This workload is bound by network delays, and so more threads is better
+#However, spark will only allow one thread per core, so we use native Python multithreading
+def consumeRDD(rdd: RDD) -> None:
+    conn = connect() #I have to do this so jaydebeapi starts the JVM ahead of time
+    #jaydebeapi is very much not threadsafe
+
+    max_threads = os.environ.get("MAX_THREADS")
+    if(not max_threads):
+        max_threads = 50
+    threadPool = [max_threads] #just a counter. It's a list because I need to pass by reference
+    lock = threading.Lock()
+    threads = []
+
+    for message in rdd.toLocalIterator():
+        t = threading.Thread(target=process_message, args=(message,lock, threadPool))
+        while(threadPool[0] <= 0): #This soft lock should prevent Python from spawning too many threads
+            time.sleep(0.1)
+        t.start()
+        threads.append(t)
+
+    for t in threads:
+        t.join()
+    if conn:
+        conn.close()
 
 
 def consume():
-    os.environ[
-        'PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'
+    os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'
     sc = SparkContext(appName="TransactionConsumer")
+    sc.setLogLevel("ERROR")
     ssc = StreamingContext(sc, 5)
     stream = KinesisUtils.createStream(ssc, os.environ.get("CONSUMER_NAME"), "byte-henry", \
                                         "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
                                         InitialPositionInStream.LATEST, 2, \
                                         awsAccessKeyId=os.environ.get("ACCESS_KEY"),
                                         awsSecretKey=os.environ.get("SECRET_KEY"))    
-    stream.foreachRDD(lambda x: x.foreach(process_message))
+    #stream.foreachRDD(lambda x: x.foreach(process_message))
+    stream.foreachRDD(consumeRDD)
     print("submitting")
     ssc.start()
     print("done")
     ssc.awaitTermination()
     print("end of script")
-
+    ssc.stop()
+    sc.stop()
 
 if __name__ == "__main__":
     consume()
