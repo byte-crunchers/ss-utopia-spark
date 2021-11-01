@@ -32,7 +32,7 @@ pipeline {
                 dir('spark-stuff'){
                     sh 'ls'
                     dir('ss-utopia-spark'){
-                        git branch: 'feature/develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
+                        git branch: 'develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
                     sh 'mv -f ss-utopia-spark/log4j.properties conf/log4j.properties'
