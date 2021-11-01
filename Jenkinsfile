@@ -32,7 +32,7 @@ pipeline {
                 dir('spark-stuff'){
                     sh 'ls'
                     dir('ss-utopia-spark'){
-                        git branch: 'feature/jenkins2', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
+                        git branch: 'feature/develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
                     sh 'mv -f ss-utopia-spark/log4j.properties conf/log4j.properties'
@@ -70,7 +70,8 @@ pipeline {
                 sh 'kubectl create serviceaccount spark || true 2> /dev/null' //needed so the driver can create more pods
                 sh 'kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default || true 2> /dev/null'
                 //give access to henry
-                sh 'eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/henry.admin --group system:masters --username admin'
+                sh 'eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/henry.admin --group system:masters --username admin1'
+                sh 'eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/wyatt.admin --group system:masters --username admin2'
                 sh 'kubectl delete pods --all' //if spark is already running, kill it
                 script{
                     //save cluster endpoint

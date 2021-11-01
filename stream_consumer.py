@@ -63,7 +63,6 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
             lock.acquire()
             threadPool[0] += 1
             lock.release()
-    
 
 
 
@@ -77,14 +76,14 @@ def consumeRDD(rdd: RDD) -> None:
     max_threads = os.environ.get("MAX_THREADS")
     if(not max_threads):
         max_threads = 50
-    threadPool = [max_threads]
+    threadPool = [max_threads] #just a counter. It's a list because I need to pass by reference
     lock = threading.Lock()
     threads = []
 
     for message in rdd.toLocalIterator():
         t = threading.Thread(target=process_message, args=(message,lock, threadPool))
         while(threadPool[0] <= 0): #This soft lock should prevent Python from spawning too many threads
-            time.sleep(0.1) 
+            time.sleep(0.1)
         t.start()
         threads.append(t)
 
