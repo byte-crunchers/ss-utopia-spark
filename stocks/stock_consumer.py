@@ -2,6 +2,7 @@ import traceback
 from enum import IntEnum
 
 import jaydebeapi
+import pandas as pd
 
 
 class StockStatus(IntEnum):
@@ -30,13 +31,17 @@ class Stock:
               self.percent_change, self.timestamp, sep=" || ")
 
 
+#  Transform stock data and persist it to the database
 def consume(message: dict, conn: jaydebeapi.Connection) -> None:
     try:
         stock = Stock(message)
 
+        #  Properly format null market caps
+        if pd.isna(stock.market_cap):
+            stock.market_cap = 0
+
         # Make sure Stock hasn't already been processed
         if stock.status != 0:
-            #print("Stock already processed, skipping...")
             return
 
         # Check for illegal negatives
@@ -56,8 +61,6 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             stock.high = stock.price
         if stock.low > stock.price:
             stock.low = stock.price
-
-        stock.print_stock()
         record_stock(stock, conn)
     except:
         traceback.print_exc()
@@ -75,7 +78,6 @@ def record_stock(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        #print("Successful stock recorded!")
     except:
         print("could not write transaction")
         traceback.print_exc()
@@ -93,7 +95,6 @@ def record_anomaly(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        #print("Anomaly recorded! Status:  " + str(StockStatus(stock.status)))
     except:
         print("could not write transaction")
         traceback.print_exc()
