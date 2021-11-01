@@ -31,6 +31,7 @@ class Stock:
               self.percent_change, self.timestamp, sep=" || ")
 
 
+#  Transform stock data and persist it to the database
 def consume(message: dict, conn: jaydebeapi.Connection) -> None:
     try:
         stock = Stock(message)
@@ -61,8 +62,6 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             stock.high = stock.price
         if stock.low > stock.price:
             stock.low = stock.price
-
-        stock.print_stock()
         record_stock(stock, conn)
     except:
         traceback.print_exc()
@@ -80,11 +79,13 @@ def record_stock(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        print("Successful stock recorded!")
+        conn.close()
+
     except:
         print("could not write transaction")
         traceback.print_exc()
         conn.rollback()
+        conn.close()
 
 
 # Used to record a successful stock price addition
@@ -98,8 +99,9 @@ def record_anomaly(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        print("Anomaly recorded! Status:  " + str(StockStatus(stock.status)))
+        conn.close()
     except:
         print("could not write transaction")
         traceback.print_exc()
         conn.rollback()
+        conn.close()
