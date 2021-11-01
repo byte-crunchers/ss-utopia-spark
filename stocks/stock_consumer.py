@@ -79,13 +79,10 @@ def record_stock(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        conn.close()
-
     except:
         print("could not write transaction")
         traceback.print_exc()
         conn.rollback()
-        conn.close()
 
 
 # Used to record a successful stock price addition
@@ -99,9 +96,7 @@ def record_anomaly(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
-        conn.close()
     except:
         print("could not write transaction")
         traceback.print_exc()
         conn.rollback()
-        conn.close()

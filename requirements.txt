@@ -1,2 +1,3 @@
 jaydebeapi
 python-dateutil
+pandas
