@@ -102,6 +102,7 @@ pipeline {
                     --conf spark.kubernetes.driverEnv.MYSQL_PASS=${MYSQL_PASS}  \
                     --conf spark.kubernetes.driverEnv.MYSQL_LOC=${MYSQL_LOC}  \
                     --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
+                    --conf spark.kubernetes.driverEnv.MAX_THREADS=20 \
                     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
                     --conf spark.kubernetes.container.image.pullPolicy=Always \
                     --conf spark.kubernetes.container.image=${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest \

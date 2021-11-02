@@ -76,7 +76,7 @@ def consumeRDD(rdd: RDD) -> None:
     max_threads = os.environ.get("MAX_THREADS")
     if(not max_threads):
         max_threads = 50
-    threadPool = [max_threads] #just a counter. It's a list because I need to pass by reference
+    threadPool = [int(max_threads)] #just a counter. It's a list because I need to pass by reference
     lock = threading.Lock()
     threads = []
 
