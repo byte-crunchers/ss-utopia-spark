@@ -3,16 +3,24 @@ pipeline {
 
     stages {
         stage('Setup'){
+            
+            environment {
+                SPARK_VERSION = '3.2.0'
+                ASSEMBLY_SPARK_VERSION = '3.3.0'
+                HADOOP_VERSION = '3.2'
+                MYSQL_JAR_VERSION = '8.0.27'
+                SCALA_VERSION = '2.12'
+            }
             steps{
                 sh 'rm -rf spark-stuff 2> /dev/null'
-                sh 'curl -o spark.tgz https://dlcdn.apache.org/spark/spark-3.2.0/spark-3.2.0-bin-hadoop3.2.tgz'
+                sh "curl -o spark.tgz https://dlcdn.apache.org/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}.tgz"
                 sh 'tar zxf spark.tgz'
-                sh "mv -f 'spark-3.2.0-bin-hadoop3.2' spark-stuff "
+                sh "mv -f 'spark-${SPARK_VERSION}-bin-hadoop${HADOOP_VERSION}' spark-stuff"
                 dir ('spark-stuff'){
-                    sh 'curl -o mysql.jar https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.27/mysql-connector-java-8.0.27.jar'
+                    sh "curl -o mysql.jar https://repo1.maven.org/maven2/mysql/mysql-connector-java/${MYSQL_JAR_VERSION}/mysql-connector-java-${MYSQL_JAR_VERSION}.jar"
                     sh 'mv -f mysql.jar jars/mysql.jar'
-                    sh 'curl -o spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar http://ss-utopia-build-resources.s3.amazonaws.com/jars/spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar'
-                    sh 'mv spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar jars/spark-streaming-kinesis-asl-assembly_2.12-3.3.0.jar'
+                    sh "curl -o spark-streaming-kinesis-asl-assembly_${SCALA_VERSION}-${ASSEMBLY_SPARK_VERSION}.jar http://ss-utopia-build-resources.s3.amazonaws.com/jars/spark-streaming-kinesis-asl-assembly_${SCALA_VERSION}-${ASSEMBLY_SPARK_VERSION}.jar"
+                    sh "mv spark-streaming-kinesis-asl-assembly_${SCALA_VERSION}-${ASSEMBLY_SPARK_VERSION}.jar jars/spark-streaming-kinesis-asl-assembly_${SCALA_VERSION}-${ASSEMBLY_SPARK_VERSION}.jar"
                 }
             }
         }
@@ -52,7 +60,7 @@ pipeline {
                 dir('spark-stuff'){
                     sh 'rm -f ~/.dockercfg ~/.docker/config.json || true 2> /dev/null'
                     script{
-                        docker.withRegistry("https://422288715120.dkr.ecr.us-east-1.amazonaws.com", "ecr:us-east-1:jenkins-ec2-user") {
+                        docker.withRegistry("https://${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com", "ecr:us-east-1:jenkins-ec2-user") {
                             docker.image("ss-utopia-spark/spark-py:latest").push()
                         }
                     }//prune
@@ -70,8 +78,8 @@ pipeline {
                 sh 'kubectl create serviceaccount spark || true 2> /dev/null' //needed so the driver can create more pods
                 sh 'kubectl create clusterrolebinding spark-role --clusterrole=edit --serviceaccount=default:spark --namespace=default || true 2> /dev/null'
                 //give access to henry
-                sh 'eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/henry.admin --group system:masters --username admin1'
-                sh 'eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/wyatt.admin --group system:masters --username admin2'
+                sh "eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/henry.admin --group system:masters --username admin1"
+                sh "eksctl create iamidentitymapping --cluster  Spark --arn arn:aws:iam::${ACC_ID}:user/wyatt.admin --group system:masters --username admin2"
                 sh 'kubectl delete pods --all' //if spark is already running, kill it
                 script{
                     //save cluster endpoint
@@ -82,27 +90,36 @@ pipeline {
             }
         }
         stage('Deploy'){
+             environment {
+                NUM_EXECUTORS = '2'
+                NUM_CORES = '2'
+                THREADS = '20'
+                EXECUTOR_MEMORY = "1500m"
+                DRIVER_MEMORY = "2g"
+
+             }
             steps{
                 dir('spark-stuff'){
                     //For this we're using Apache's native spark-submit tool. It has a lot of options.
                     sh './bin/spark-submit --master k8s://${CLUSTER} \
                     --deploy-mode cluster \
                     --name byte-consumer \
-                    --conf spark.executor.instances=2  \
+                    --conf spark.executor.instances=${NUM_EXECUTORS} \
                     --conf spark.kubernetes.executor.podNamePrefix=executor \
-                    --conf spark.kubernetes.executor.request.cores=2 \
-                    --conf spark.executor.cores=2 \
-                    --conf spark.executor.memory=2g \
+                    --conf spark.kubernetes.executor.request.cores=${NUM_CORES} \
+                    --conf spark.executor.cores=${NUM_CORES} \
+                    --conf spark.executor.memory=${EXECUTOR_MEMORY} \
+                    --conf spark.driver.memory=${DRIVER_MEMORY} \
                     --conf spark.kubernetes.submission.waitAppCompletion=false \
                     --conf spark.kubernetes.driver.pod.name=driver \
                     --conf spark.kubernetes.driverEnv.ACCESS_KEY=${AWS_ACCESS_KEY_ID} \
                     --conf spark.kubernetes.driverEnv.SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
                     --conf spark.kubernetes.driverEnv.AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
                     --conf spark.kubernetes.driverEnv.MYSQL_USER=${MYSQL_USER} \
-                    --conf spark.kubernetes.driverEnv.MYSQL_PASS=${MYSQL_PASS}  \
+                    --conf spark.kubernetes.driverEnv.MYSQL_PASS=${MYSQL_PASS} \
                     --conf spark.kubernetes.driverEnv.MYSQL_LOC=${MYSQL_LOC}  \
                     --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
-                    --conf spark.kubernetes.driverEnv.MAX_THREADS=20 \
+                    --conf spark.kubernetes.driverEnv.MAX_THREADS=${THREADS} \
                     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
                     --conf spark.kubernetes.container.image.pullPolicy=Always \
                     --conf spark.kubernetes.container.image=${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest \
