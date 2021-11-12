@@ -100,6 +100,7 @@ pipeline {
                 BACKLOG_TIMEOUT = "30s" 
                 SUSTAINED_TIMEOUT = "4m" //how long after requesting new executors does it ask for more if need be
                 PARTITIONS = '10' 
+                BATCH_LENGTH = '10' //10 second batches because the processing of each batch takes a minimum of a few seconds.
 
              }
             steps{
@@ -114,7 +115,6 @@ pipeline {
                     --conf spark.streaming.dynamicAllocation.maxExecutors=${MAX_EXECUTORS} \
                     --conf spark.streaming.dynamicAllocation.schedulerBacklogTimeout=${BACKLOG_TIMEOUT} \
                     --conf spark.streaming.dynamicAllocation.sustainedSchedulerBacklogTimeout=${SUSTAINED_TIMEOUT} \
-                    --conf spark.streaming.concurrentJobs=12 \
                     --conf spark.kubernetes.executor.podNamePrefix=executor \
                     --conf spark.kubernetes.executor.request.cores=${NUM_CORES} \
                     --conf spark.executor.cores=${NUM_CORES} \
@@ -125,11 +125,12 @@ pipeline {
                     --conf spark.kubernetes.driverEnv.ACCESS_KEY=${AWS_ACCESS_KEY_ID} \
                     --conf spark.kubernetes.driverEnv.SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
                     --conf spark.kubernetes.driverEnv.AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
-                    --conf spark.kubernetes.driverEnv.MYSQL_USER=${MYSQL_USER} \
-                    --conf spark.kubernetes.driverEnv.MYSQL_PASS=${MYSQL_PASS} \
-                    --conf spark.kubernetes.driverEnv.MYSQL_LOC=${MYSQL_LOC}  \
                     --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
-                    --conf spark.kubernetes.driverEnv.MAX_THREADS=${THREADS} \
+                    --conf spark.kubernetes.driverEnv.BATCH_LENGTH=${BATCH_LENGTH} \
+                    --conf spark.executorEnv.MYSQL_USER=${MYSQL_USER} \
+                    --conf spark.executorEnv.MYSQL_PASS=${MYSQL_PASS} \
+                    --conf spark.executorEnv.MYSQL_LOC=${MYSQL_LOC}  \
+                    --conf spark.executorEnv.MAX_THREADS=${THREADS} \
                     --conf spark.kubernetes.driverEnv.PARTITIONS=${PARTITIONS} \
                     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
                     --conf spark.kubernetes.container.image.pullPolicy=Always \
