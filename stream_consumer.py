@@ -80,21 +80,17 @@ def consumePartition(partition) -> None:
     lock = threading.Lock()
     threads = []
 
-    partition.foreach(threadMessage, lock=lock, threads=threads, threadPool=threadPool)
-        
+    for message in partition:
+        t = threading.Thread(target=process_message, args=(message,lock, threadPool))
+        while(threadPool[0] <= 0): #This soft lock should prevent Python from spawning too many threads
+            time.sleep(0.1)
+        t.start()
+        threads.append(t)
+
     for t in threads:
         t.join()
     if conn:
         conn.close()
-
-#helper function for consumePartition
-#my god why doesn't python support multi-line lambdas
-def threadMessage(message, lock, threads, threadPool):
-    t = threading.Thread(target=process_message, args=(message,lock, threadPool))
-    while(threadPool[0] <= 0): #This soft lock should prevent Python from spawning too many threads
-        time.sleep(0.1)
-    t.start()
-    threads.append(t)
 
 
 def consume():
