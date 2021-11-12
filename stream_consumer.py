@@ -94,17 +94,17 @@ def consumeRDD(rdd: RDD) -> None:
 
 
 def consume():
-    os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'
+    os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell' #only used for running localy
     sc = SparkContext(appName="TransactionConsumer")
     sc.setLogLevel("ERROR")
-    ssc = StreamingContext(sc, 5)
+    ssc = StreamingContext(sc, 5) #5 second window
     stream = KinesisUtils.createStream(ssc, os.environ.get("CONSUMER_NAME"), "byte-henry", \
                                         "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
                                         InitialPositionInStream.LATEST, 2, \
                                         awsAccessKeyId=os.environ.get("ACCESS_KEY"),
                                         awsSecretKey=os.environ.get("SECRET_KEY"))    
-    #stream.foreachRDD(lambda x: x.foreach(process_message))
-    stream.foreachRDD(consumeRDD)
+    partitionedStream = stream.repartition(int(os.environ.get("PARTITIONS"))) #allows us to process the stream across multiple tasks/cores/executors
+    partitionedStream.foreachRDD(consumeRDD)
     print("submitting")
     ssc.start()
     print("done")

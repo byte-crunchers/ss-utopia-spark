@@ -92,13 +92,14 @@ pipeline {
         stage('Deploy'){
              environment {
                 NUM_EXECUTORS = '2'
-                MAX_EXECUTORS = '5'
+                MAX_EXECUTORS = '6'
                 NUM_CORES = '2'
-                THREADS = '20' //how many threads and therefore db connections per task
+                THREADS = '6' //how many threads and therefore db connections per task
                 EXECUTOR_MEMORY = "1500m" 
                 DRIVER_MEMORY = "2g" 
                 BACKLOG_TIMEOUT = "30s" 
                 SUSTAINED_TIMEOUT = "4m" //how long after requesting new executors does it ask for more if need be
+                PARTITIONS = '10' 
 
              }
             steps{
@@ -128,6 +129,7 @@ pipeline {
                     --conf spark.kubernetes.driverEnv.MYSQL_LOC=${MYSQL_LOC}  \
                     --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
                     --conf spark.kubernetes.driverEnv.MAX_THREADS=${THREADS} \
+                    --conf spark.kubernetes.driverEnv.PARTITIONS=${PARTITIONS} \
                     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
                     --conf spark.kubernetes.container.image.pullPolicy=Always \
                     --conf spark.kubernetes.container.image=${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest \
