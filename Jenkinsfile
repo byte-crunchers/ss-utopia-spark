@@ -40,7 +40,7 @@ pipeline {
                 dir('spark-stuff'){
                     sh 'ls'
                     dir('ss-utopia-spark'){
-                        git branch: 'develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
+                        git branch: 'feature/repartition_spark', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
                     sh 'mv -f ss-utopia-spark/log4j.properties conf/log4j.properties'
@@ -92,10 +92,13 @@ pipeline {
         stage('Deploy'){
              environment {
                 NUM_EXECUTORS = '2'
+                MAX_EXECUTORS = '5'
                 NUM_CORES = '2'
-                THREADS = '20'
-                EXECUTOR_MEMORY = "1500m"
-                DRIVER_MEMORY = "2g"
+                THREADS = '20' //how many threads and therefore db connections per task
+                EXECUTOR_MEMORY = "1500m" 
+                DRIVER_MEMORY = "2g" 
+                BACKLOG_TIMEOUT = "30s" 
+                SUSTAINED_TIMEOUT = "4m" //how long after requesting new executors does it ask for more if need be
 
              }
             steps{
@@ -104,7 +107,12 @@ pipeline {
                     sh './bin/spark-submit --master k8s://${CLUSTER} \
                     --deploy-mode cluster \
                     --name byte-consumer \
-                    --conf spark.executor.instances=${NUM_EXECUTORS} \
+                    --conf spark.streaming.dynamicAllocation.shuffleTracking.enabled=true \
+                    --conf spark.streaming.dynamicAllocation.enabled=true \
+                    --conf spark.streaming.dynamicAllocation.minExecutors=2 \
+                    --conf spark.streaming.dynamicAllocation.maxExecutors=${MAX_EXECUTORS} \
+                    --conf spark.streaming.dynamicAllocation.schedulerBacklogTimeout=${BACKLOG_TIMEOUT} \
+                    --conf spark.streaming.dynamicAllocation.sustainedSchedulerBacklogTimeout=${SUSTAINED_TIMEOUT} \
                     --conf spark.kubernetes.executor.podNamePrefix=executor \
                     --conf spark.kubernetes.executor.request.cores=${NUM_CORES} \
                     --conf spark.executor.cores=${NUM_CORES} \
