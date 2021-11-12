@@ -97,7 +97,7 @@ def consume():
     os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell' #only used for running localy
     sc = SparkContext(appName="TransactionConsumer")
     sc.setLogLevel("ERROR")
-    ssc = StreamingContext(sc, os.environ.get("BATCH_LENGTH"))
+    ssc = StreamingContext(sc, int(os.environ.get("BATCH_LENGTH")))
     stream = KinesisUtils.createStream(ssc, os.environ.get("CONSUMER_NAME"), "byte-henry", \
                                         "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
                                         InitialPositionInStream.LATEST, 2, \
