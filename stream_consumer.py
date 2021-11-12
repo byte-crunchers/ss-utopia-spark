@@ -103,7 +103,9 @@ def consume():
                                         InitialPositionInStream.LATEST, 2, \
                                         awsAccessKeyId=os.environ.get("ACCESS_KEY"),
                                         awsSecretKey=os.environ.get("SECRET_KEY"))    
-    partitionedStream = stream.repartition(int(os.environ.get("PARTITIONS"))) #allows us to process the stream across multiple tasks/cores/executors
+    partitions = int(os.environ.get("PARTITIONS"))                                
+    print("splitting into {:d} paritions".format(partitions))
+    partitionedStream = stream.repartition(partitions) #allows us to process the stream across multiple tasks/cores/executors
     partitionedStream.foreachRDD(consumeRDD)
     print("submitting")
     ssc.start()

@@ -114,6 +114,7 @@ pipeline {
                     --conf spark.streaming.dynamicAllocation.maxExecutors=${MAX_EXECUTORS} \
                     --conf spark.streaming.dynamicAllocation.schedulerBacklogTimeout=${BACKLOG_TIMEOUT} \
                     --conf spark.streaming.dynamicAllocation.sustainedSchedulerBacklogTimeout=${SUSTAINED_TIMEOUT} \
+                    --conf spark.streaming.concurrentJobs=12 \
                     --conf spark.kubernetes.executor.podNamePrefix=executor \
                     --conf spark.kubernetes.executor.request.cores=${NUM_CORES} \
                     --conf spark.executor.cores=${NUM_CORES} \
