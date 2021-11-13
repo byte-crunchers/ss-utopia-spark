@@ -6,7 +6,7 @@ import traceback
 import threading
 
 import jaydebeapi
-from pyspark import SparkContext, RDD
+from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kinesis import KinesisUtils, InitialPositionInStream
 
@@ -69,7 +69,7 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
 #Helper function to multithread this workload
 #This workload is bound by network delays, and so more threads is better
 #However, spark will only allow one thread per core, so we use native Python multithreading
-def consumeRDD(rdd: RDD) -> None:
+def consumePartition(partition) -> None:
     conn = connect() #I have to do this so jaydebeapi starts the JVM ahead of time
     #jaydebeapi is very much not threadsafe
 
@@ -80,7 +80,7 @@ def consumeRDD(rdd: RDD) -> None:
     lock = threading.Lock()
     threads = []
 
-    for message in rdd.toLocalIterator():
+    for message in partition:
         t = threading.Thread(target=process_message, args=(message,lock, threadPool))
         while(threadPool[0] <= 0): #This soft lock should prevent Python from spawning too many threads
             time.sleep(0.1)
@@ -94,17 +94,19 @@ def consumeRDD(rdd: RDD) -> None:
 
 
 def consume():
-    os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'
+    os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell' #only used for running localy
     sc = SparkContext(appName="TransactionConsumer")
     sc.setLogLevel("ERROR")
-    ssc = StreamingContext(sc, 5)
+    ssc = StreamingContext(sc, int(os.environ.get("BATCH_LENGTH")))
     stream = KinesisUtils.createStream(ssc, os.environ.get("CONSUMER_NAME"), "byte-henry", \
                                         "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
                                         InitialPositionInStream.LATEST, 2, \
                                         awsAccessKeyId=os.environ.get("ACCESS_KEY"),
                                         awsSecretKey=os.environ.get("SECRET_KEY"))    
-    #stream.foreachRDD(lambda x: x.foreach(process_message))
-    stream.foreachRDD(consumeRDD)
+    partitions = int(os.environ.get("PARTITIONS"))                                
+    print("splitting into {:d} paritions".format(partitions))
+    partitionedStream = stream.repartition(partitions) #allows us to process the stream across multiple tasks/cores/executors
+    partitionedStream.foreachRDD(lambda rdd: rdd.foreachPartition(consumePartition)) #splits the stream into tasks based on partition
     print("submitting")
     ssc.start()
     print("done")
