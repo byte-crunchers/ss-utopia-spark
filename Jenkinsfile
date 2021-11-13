@@ -40,7 +40,7 @@ pipeline {
                 dir('spark-stuff'){
                     sh 'ls'
                     dir('ss-utopia-spark'){
-                        git branch: 'feature/repartition_spark', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
+                        git branch: 'develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
                     sh 'mv -f ss-utopia-spark/log4j.properties conf/log4j.properties'
@@ -97,10 +97,11 @@ pipeline {
                 THREADS = '6' //how many threads and therefore db connections per task
                 EXECUTOR_MEMORY = "1500m" 
                 DRIVER_MEMORY = "2g" 
-                BACKLOG_TIMEOUT = "30s" 
                 SUSTAINED_TIMEOUT = "4m" //how long after requesting new executors does it ask for more if need be
                 PARTITIONS = '10' 
                 BATCH_LENGTH = '10' //10 second batches because the processing of each batch takes a minimum of a few seconds.
+                SCALING_INTERVAL = '60' //every interval the autoscaler checks to see if more or fewer pods are needed
+
 
              }
             steps{
@@ -113,8 +114,7 @@ pipeline {
                     --conf spark.streaming.dynamicAllocation.enabled=true \
                     --conf spark.streaming.dynamicAllocation.minExecutors=2 \
                     --conf spark.streaming.dynamicAllocation.maxExecutors=${MAX_EXECUTORS} \
-                    --conf spark.streaming.dynamicAllocation.schedulerBacklogTimeout=${BACKLOG_TIMEOUT} \
-                    --conf spark.streaming.dynamicAllocation.sustainedSchedulerBacklogTimeout=${SUSTAINED_TIMEOUT} \
+                    --conf spark.streaming.dynamicAllocation.scalingInterval=${SCALING_INTERVAL} \
                     --conf spark.kubernetes.executor.podNamePrefix=executor \
                     --conf spark.kubernetes.executor.request.cores=${NUM_CORES} \
                     --conf spark.executor.cores=${NUM_CORES} \
