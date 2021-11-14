@@ -54,7 +54,6 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
                 or not isinstance(stock.volume, (int, float)) or not isinstance(stock.high, (int, float))
                 or not isinstance(stock.low, (int, float)) or not isinstance(stock.status, (int, float))):
             stock.status = StockStatus.illegal_null
-            return
 
         # Fix the high and low
         if stock.high < stock.price:
@@ -95,6 +94,7 @@ def record_anomaly(stock: Stock, conn: jaydebeapi.Connection):
             stock.timestamp, stock.status
         )
         curs.execute(query, vals)
+        print("Anomaly Recorded!")
     except:
         print("could not write transaction")
         traceback.print_exc()
