@@ -125,7 +125,7 @@ def record_loan_payment(loan_payment: LoanPayment, account: Account, loan: Loan,
         query = 'UPDATE loans SET balance = balance + ? WHERE id = ?'
         curs.execute(query, (loan_payment.amount, loan.id))
 
-        query = 'INSERT INTO loan_payments(loan_id, account_id, amount, time_stamp, status) VALUES (?,?,?,?,?)'
+        query = 'INSERT INTO loan_payments(loan_id, account_id, amount, date_time, status) VALUES (?,?,?,?,?)'
         vals = (
             loan_payment.loan_id, loan_payment.account_id, loan_payment.amount,
             date_to_string(loan_payment.time_stamp),
@@ -143,7 +143,7 @@ def record_loan_payment(loan_payment: LoanPayment, account: Account, loan: Loan,
 def record_anomaly(loan_payment: LoanPayment, conn: jaydebeapi.Connection):
     try:
         curs = conn.cursor()
-        query = 'INSERT INTO loan_payments(loan_id, account_id, amount, time_stamp, status) VALUES (?,?,?,?,?)'
+        query = 'INSERT INTO loan_payments(loan_id, account_id, amount, date_time, status) VALUES (?,?,?,?,?)'
         vals = (
             loan_payment.loan_id, loan_payment.account_id, loan_payment.amount,
             date_to_string(loan_payment.time_stamp),
