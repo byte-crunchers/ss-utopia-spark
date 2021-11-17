@@ -105,8 +105,7 @@ def consume():
                                        awsSecretKey=os.environ.get("SECRET_KEY"))
     partitions = int(os.environ.get("PARTITIONS"))
     print("splitting into {:d} partitions".format(partitions))
-    partitionedStream = stream.repartition(
-        partitions)  # allows us to process the stream across multiple tasks/cores/executors
+    partitionedStream = stream.repartition(partitions)  # allows us to process the stream across multiple tasks/cores/executors
     partitionedStream.foreachRDD(
         lambda rdd: rdd.foreachPartition(consumePartition))  # splits the stream into tasks based on partition
     print("submitting")
