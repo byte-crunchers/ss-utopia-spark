@@ -26,22 +26,22 @@ In the future this service will notify users of potential fraud,  but the method
 
 ## Jenkins Parameters
 ### Setup Stage
-**SPARK_VERSION** - '3.x.x' - The version of Spark to be downloaded
-**ASSEMBLY_SPARK_VERSION** - '3.x.x' - The version of Spark used in the spark-streaming-kinesis-asl JAR that has been pre-assembled and uploaded onto S3. Idealy this should be the same as SPARK_VERSION, but life is far from ideal.
-**HADOOP_VERSION** - '3.x' - The version of Hadoop used with Spark
-**MYSQL_JAR_VERSION** - '8.x.x' - The version of the MySQL JDBC JAR to download
-**SCALA_VERSION** - '2.x' - The version of Scala used with Spark
+**SPARK_VERSION** - '3.x.x' - The version of Spark to be downloaded  
+**ASSEMBLY_SPARK_VERSION** - '3.x.x' - The version of Spark used in the spark-streaming-kinesis-asl JAR that has been pre-assembled and uploaded onto S3. Idealy this should be the same as SPARK_VERSION, but life is far from ideal  
+**HADOOP_VERSION** - '3.x' - The version of Hadoop used with Spark  
+**MYSQL_JAR_VERSION** - '8.x.x' - The version of the MySQL JDBC JAR to download  
+**SCALA_VERSION** - '2.x' - The version of Scala used with Spark  
 ### Deploy Stage
-**NUM_EXECUTORS** - 'x' - Base number of executor containers - deprecated
-**MAX_EXECUTORS** - 'x' - Maximum number of executors that may be created with auto-scaling
-**NUM_CORES** - 'x' - Number of cores per executor
-**THREADS** - 'x'  - Number of Python threads and therefore DB connections per task (at one task per core)
-**EXECUTOR_MEMORY** - "xm" - Amount of memory allocated to the executor pod
-**DRIVER_MEMORY** - "xg" - Amount of memory allocated to the driver pod
-**SUSTAINED_TIMEOUT** - "xm" -  Time after requesting new executors to request more if need be - deprecated
-**PARTITIONS** - 'x' - Number of partitions to break each batch into. Should be around one per task or MAX_EXECUTORS * NUM_CORES
-**BATCH_LENGTH** - 'x' - Window of time in which spark collects messaged from Kinesis before sending them to the executors as a single batch.
-**SCALING_INTERVAL** - 'x'  - Every interval, the autoscaler checks to see if more or fewer pods are needed
+**NUM_EXECUTORS** - 'x' - Base number of executor containers - deprecated  
+**MAX_EXECUTORS** - 'x' - Maximum number of executors that may be created with auto-scaling  
+**NUM_CORES** - 'x' - Number of cores per executor  
+**THREADS** - 'x'  - Number of Python threads and therefore DB connections per task (at one task per core)  
+**EXECUTOR_MEMORY** - "xm" - Amount of memory allocated to the executor pod  
+**DRIVER_MEMORY** - "xg" - Amount of memory allocated to the driver pod  
+**SUSTAINED_TIMEOUT** - "xm" -  Time after requesting new executors to request more if need be - deprecated  
+**PARTITIONS** - 'x' - Number of partitions to break each batch into. Should be around one per task or MAX_EXECUTORS * NUM_CORES  
+**BATCH_LENGTH** - 'x' - Window of time in which spark collects messaged from Kinesis before sending them to the executors as a single batch.  
+**SCALING_INTERVAL** - 'x'  - Every interval, the autoscaler checks to see if more or fewer pods are needed  
 
 ## URL:
 https://github.com/byte-crunchers/ss-utopia-spark
