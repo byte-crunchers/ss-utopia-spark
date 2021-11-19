@@ -51,7 +51,8 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
     conn = connect()
 
     if conn:    
-        try:    
+        try:
+            raise   
             if mdict['type'] == 'transaction':
                 trans_c.consume(mdict, conn)
             elif mdict['type'] == 'card_transaction':

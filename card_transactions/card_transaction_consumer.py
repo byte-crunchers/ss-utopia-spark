@@ -95,7 +95,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             conn.rollback()
     except:
         print("failed to process transaction", file=sys.stderr)
-        traceback.print_exc()
+        failover(message)
 
 def check_null(string: str) -> str:
     if string == '\\N' or string == '':

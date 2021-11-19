@@ -94,7 +94,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             conn.rollback()
     except:
         print("failed to process transaction", file=sys.stderr)
-        traceback.print_exc()
+        failover(message)
 
 #used to record an unsuccessful transaction. Should be followed by a return so the transaction is not recorded twice
 def record_anomoly(trans: Transaction, conn: jaydebeapi.Connection, message: dict):
