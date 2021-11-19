@@ -1,10 +1,10 @@
-import time
 import json
 import os
 import sys
-import traceback
 import threading
 import random
+import time
+import traceback
 
 import jaydebeapi
 from pyspark import SparkContext
@@ -61,6 +61,7 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
                 loan_payment_c.consume(mdict, conn)
             elif mdict['type'] == 'stock':
                 stock_c.consume(mdict, conn)
+                failover(mdict)
             else:
                 print("unrecognized type")
             conn.commit()
@@ -93,24 +94,23 @@ def failover(message: dict):
         print('Failed to write to DynamoDB!:\n', file=sys.stderr)
         traceback.print_exc()
 
-
-#Helper function to multithread this workload
-#This workload is bound by network delays, and so more threads is better
-#However, spark will only allow one thread per core, so we use native Python multithreading
+# Helper function to multithread this workload
+# This workload is bound by network delays, and so more threads is better
+# However, spark will only allow one thread per core, so we use native Python multithreading
 def consumePartition(partition) -> None:
-    conn = connect() #I have to do this so jaydebeapi starts the JVM ahead of time
-    #jaydebeapi is very much not threadsafe
+    conn = connect()  # I have to do this so jaydebeapi starts the JVM ahead of time
+    # jaydebeapi is very much not threadsafe
 
     max_threads = os.environ.get("MAX_THREADS")
-    if(not max_threads):
+    if not max_threads:
         max_threads = 50
-    threadPool = [int(max_threads)] #just a counter. It's a list because I need to pass by reference
+    threadPool = [int(max_threads)]  # just a counter. It's a list because I need to pass by reference
     lock = threading.Lock()
     threads = []
 
     for message in partition:
-        t = threading.Thread(target=process_message, args=(message,lock, threadPool))
-        while(threadPool[0] <= 0): #This soft lock should prevent Python from spawning too many threads
+        t = threading.Thread(target=process_message, args=(message, lock, threadPool))
+        while (threadPool[0] <= 0):  # This soft lock should prevent Python from spawning too many threads
             time.sleep(0.1)
         t.start()
         threads.append(t)
@@ -122,19 +122,21 @@ def consumePartition(partition) -> None:
 
 
 def consume():
-    os.environ['PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell' #only used for running localy
+    os.environ[
+        'PYSPARK_SUBMIT_ARGS'] = '--packages org.apache.spark:spark-streaming-kinesis-asl_2.12:3.1.2 pyspark-shell'  # only used for running localy
     sc = SparkContext(appName="TransactionConsumer")
     sc.setLogLevel("ERROR")
     ssc = StreamingContext(sc, int(os.environ.get("BATCH_LENGTH")))
     stream = KinesisUtils.createStream(ssc, os.environ.get("CONSUMER_NAME"), "byte-henry", \
-                                        "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
-                                        InitialPositionInStream.LATEST, 2, \
-                                        awsAccessKeyId=os.environ.get("ACCESS_KEY"),
-                                        awsSecretKey=os.environ.get("SECRET_KEY"))    
-    partitions = int(os.environ.get("PARTITIONS"))                                
-    print("splitting into {:d} paritions".format(partitions))
-    partitionedStream = stream.repartition(partitions) #allows us to process the stream across multiple tasks/cores/executors
-    partitionedStream.foreachRDD(lambda rdd: rdd.foreachPartition(consumePartition)) #splits the stream into tasks based on partition
+                                       "https://kinesis.us-east-1.amazonaws.com", 'us-east-1',
+                                       InitialPositionInStream.LATEST, 2, \
+                                       awsAccessKeyId=os.environ.get("ACCESS_KEY"),
+                                       awsSecretKey=os.environ.get("SECRET_KEY"))
+    partitions = int(os.environ.get("PARTITIONS"))
+    print("splitting into {:d} partitions".format(partitions))
+    partitionedStream = stream.repartition(partitions)  # allows us to process the stream across multiple tasks/cores/executors
+    partitionedStream.foreachRDD(
+        lambda rdd: rdd.foreachPartition(consumePartition))  # splits the stream into tasks based on partition
     print("submitting")
     ssc.start()
     print("done")
