@@ -9,6 +9,7 @@ from dateutil import parser as date_parse
 import sys
 from boto3.dynamodb.types import TypeSerializer
 
+from decimal import Decimal
 
 class TransactionStatus(IntEnum):
     accepted = 1
@@ -159,10 +160,11 @@ def failover(message: dict):
     try:
         message['key']=random.randrange(0, 32768) #random 16 bit number to uniquify the entry
         serializer = TypeSerializer() #Dynamo/boto doesn't except raw jsons
-
+        item = {k: serializer.serialize(v) for k, v in message.items()}
+        item_dec = json.loads(json.dumps(item), parse_float=Decimal) # "Float types are not supported. Use Decimal types instead." - Boto3, 2021
         dyn = boto3.client('dynamodb', region_name='us-east-1',
             aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
-        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item={k: serializer.serialize(v) for k, v in message.items()}) #I stole this code
+        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item=item_dec) #I stole this code
     except:
         print('Failed to write to DynamoDB!:\n', file=sys.stderr)
         traceback.print_exc()
