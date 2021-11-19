@@ -7,6 +7,8 @@ from enum import IntEnum
 import datetime
 from dateutil import parser as date_parse
 import sys
+from boto3.dynamodb.types import TypeSerializer
+
 
 class TransactionStatus(IntEnum):
     accepted = 1
@@ -144,8 +146,8 @@ class Account:
 def record_anomoly(trans: Card_Transaction, conn: jaydebeapi.Connection, message: dict):
     try:
             curs = conn.cursor()
-            query = 'INSERT INTO transactions(origin_account, destination_account, memo, transfer_value, time_stamp, status) VALUES (?,?,?,?,?,?)'
-            vals = (trans.origin, trans.destination, trans.memo, trans.value, date_to_string(trans.time_stamp), trans.status)
+            query = 'INSERT INTO card_transactions(card_num, merchant_account_id, memo, transfer_value, pin, cvc1, cvc2, location, time_stamp, status) VALUES (?,?,?,?,?,?,?,?,?,?)'
+            vals = (trans.card, trans.acc, trans.memo, trans.value, trans.pin, trans.cvc1, trans.cvc2, trans.location, date_to_string(trans.time_stamp), 1)
             curs.execute(query, vals)
     except:
             print("could not write transaction", file=sys.stderr)
@@ -156,9 +158,11 @@ def record_anomoly(trans: Card_Transaction, conn: jaydebeapi.Connection, message
 def failover(message: dict):
     try:
         message['key']=random.randrange(0, 32768) #random 16 bit number to uniquify the entry
+        serializer = TypeSerializer() #Dynamo/boto doesn't except raw jsons
+
         dyn = boto3.client('dynamodb', region_name='us-east-1',
             aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
-        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item=message)
+        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item={k: serializer.serialize(v) for k, v in message.items()}) #I stole this code
     except:
         print('Failed to write to DynamoDB!:\n', file=sys.stderr)
         traceback.print_exc()

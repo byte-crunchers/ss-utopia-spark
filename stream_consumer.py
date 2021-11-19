@@ -11,6 +11,7 @@ from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kinesis import KinesisUtils, InitialPositionInStream
 import boto3
+from boto3.dynamodb.types import TypeSerializer
 
 import card_transactions.card_transaction_consumer as card_c
 import loan_payments.lp_consumer as loan_payment_c
@@ -77,9 +78,11 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
 def failover(message: dict):
     try:
         message['key']=random.randrange(0, 32768) #random 16 bit number to uniquify the entry
+        serializer = TypeSerializer() #Dynamo/boto doesn't except raw jsons
+
         dyn = boto3.client('dynamodb', region_name='us-east-1',
             aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
-        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item=message)
+        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item={k: serializer.serialize(v) for k, v in message.items()}) #I stole this code
     except:
         print('Failed to write to DynamoDB!:\n', file=sys.stderr)
         traceback.print_exc()
