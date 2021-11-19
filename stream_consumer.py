@@ -73,6 +73,11 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
             lock.acquire()
             threadPool[0] += 1
             lock.release()
+    else:
+        failover(mdict)
+        lock.acquire()
+        threadPool[0] += 1
+        lock.release()
         
             
 def failover(message: dict):
