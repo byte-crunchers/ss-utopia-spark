@@ -1,10 +1,16 @@
-import dateutil
+import random
+import boto3
+import os
 import jaydebeapi
 import traceback
+import json
 from enum import IntEnum
 import datetime
 from dateutil import parser as date_parse
 import sys
+from boto3.dynamodb.types import TypeSerializer
+
+from decimal import Decimal
 
 class TransactionStatus(IntEnum):
     accepted = 1
@@ -33,7 +39,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         except:
             #print("transaction rejected - no such card")
             trans.status = TransactionStatus.no_card
-            return record_anomoly(trans, conn)
+            return record_anomoly(trans, conn, message)
         curs.execute("select * from accounts where id = ?", (card.acc,))
         origin = Account(curs.fetchall()[0])
         curs.execute("select * from accounts where id = ?", (trans.acc,))
@@ -43,7 +49,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         if not origin.active or not dest.active:
             #print("transaction rejected - inactive account")
             trans.status = TransactionStatus.inactive_account
-            return record_anomoly(trans, conn)
+            return record_anomoly(trans, conn, message)
 
         #Make sure there's enough money
         if (origin.limit):
@@ -53,31 +59,28 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         if av_funds < trans.value:
             #print("transaction rejected - not enough funds")
             trans.status = TransactionStatus.insufficient_funds
-            return record_anomoly(trans, conn)
+            return record_anomoly(trans, conn, message)
 
         if datetime.datetime.now() > date_parse.parse(card.exp):
             #print ("transaction rejected - expired card")
             trans.status = TransactionStatus.expired
-            return record_anomoly(trans, conn)
+            return record_anomoly(trans, conn, message)
 
         if trans.cvc1: #in person
             if trans.cvc1 != card.cvc1:
                 #print ("invalid credentials")
                 trans.status = TransactionStatus.invalid
-                return record_anomoly(trans, conn)
+                return record_anomoly(trans, conn, message)
             if card.pin and card.pin != trans.pin:                    
                 #print ("invalid credentials")
                 trans.status = TransactionStatus.invalid
-                return record_anomoly(trans, conn)
+                return record_anomoly(trans, conn, message)
         elif trans.cvc2: #online not amazon
             if trans.cvc2 != card.cvc2:
                 #print ("invalid credentials")
                 trans.status = TransactionStatus.invalid
-                return record_anomoly(trans, conn)
+                return record_anomoly(trans, conn, message)
         
-
-
-
         try:
             query = 'UPDATE accounts SET balance = balance - ? WHERE id = ?'
             curs.execute(query, (trans.value, card.acc))
@@ -94,7 +97,7 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             conn.rollback()
     except:
         print("failed to process transaction", file=sys.stderr)
-        traceback.print_exc()
+        failover(message)
 
 def check_null(string: str) -> str:
     if string == '\\N' or string == '':
@@ -142,13 +145,26 @@ class Account:
         self.confirmed = row[10]
 
 #used to record an unsuccessful transaction. Should be followed by a return so the transaction is not recorded twice
-def record_anomoly(trans: Card_Transaction, conn: jaydebeapi.Connection):
+def record_anomoly(trans: Card_Transaction, conn: jaydebeapi.Connection, message: dict):
     try:
             curs = conn.cursor()
             query = 'INSERT INTO card_transactions(card_num, merchant_account_id, memo, transfer_value, pin, cvc1, cvc2, location, time_stamp, status) VALUES (?,?,?,?,?,?,?,?,?,?)'
-            vals = (trans.card, trans.acc, trans.memo, trans.value, trans.pin, trans.cvc1, trans.cvc2, trans.location, date_to_string(trans.time_stamp), trans.status)
+            vals = (trans.card, trans.acc, trans.memo, trans.value, trans.pin, trans.cvc1, trans.cvc2, trans.location, date_to_string(trans.time_stamp), 1)
             curs.execute(query, vals)
     except:
             print("could not write transaction", file=sys.stderr)
             conn.rollback()
+            failover(message)
     return
+
+def failover(message: dict):
+    try:
+        message['key']=random.randrange(0, 32768) #random 16 bit number to uniquify the entry
+        message_dec = json.loads(json.dumps(message), parse_float=Decimal) # "Float types are not supported. Use Decimal types instead." - Boto3, 2021
+        serializer = TypeSerializer() #Dynamo/boto doesn't except raw jsons
+        dyn = boto3.client('dynamodb', region_name='us-east-1',
+            aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
+        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item={k: serializer.serialize(v) for k, v in message_dec.items()}) #I stole this code
+    except:
+        print('Failed to write to DynamoDB!:\n', file=sys.stderr)
+        traceback.print_exc()

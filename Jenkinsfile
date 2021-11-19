@@ -38,9 +38,8 @@ pipeline {
         stage('Pull') {
             steps {
                 dir('spark-stuff'){
-                    sh 'ls'
                     dir('ss-utopia-spark'){
-                        git branch: 'develop', url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
+                        git branch: "${BRANCH}", url: 'https://github.com/byte-crunchers/ss-utopia-spark' //perameterize with env
                     }
                     sh 'mv -f ss-utopia-spark/Dockerfile kubernetes/dockerfiles/spark/bindings/python/Dockerfile'
                     sh 'mv -f ss-utopia-spark/log4j.properties conf/log4j.properties'
@@ -130,6 +129,8 @@ pipeline {
                     --conf spark.executorEnv.MYSQL_USER=${MYSQL_USER} \
                     --conf spark.executorEnv.MYSQL_PASS=${MYSQL_PASS} \
                     --conf spark.executorEnv.MYSQL_LOC=${MYSQL_LOC}  \
+                    --conf spark.executorEnv.ACCESS_KEY=${AWS_ACCESS_KEY_ID} \
+                    --conf spark.executorEnv.SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
                     --conf spark.executorEnv.MAX_THREADS=${THREADS} \
                     --conf spark.kubernetes.driverEnv.PARTITIONS=${PARTITIONS} \
                     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \

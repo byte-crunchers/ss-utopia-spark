@@ -2,6 +2,7 @@ import json
 import os
 import sys
 import threading
+import random
 import time
 import traceback
 
@@ -9,6 +10,9 @@ import jaydebeapi
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kinesis import KinesisUtils, InitialPositionInStream
+import boto3
+from boto3.dynamodb.types import TypeSerializer
+from decimal import Decimal
 
 import card_transactions.card_transaction_consumer as card_c
 import loan_payments.lp_consumer as loan_payment_c
@@ -34,16 +38,21 @@ def connect():
 
 
 def process_message(message: str, lock: threading.Lock, threadPool: int) -> None:
-    # make sure not to exceed the max threads
-    while threadPool[0] <= 0:
-        time.sleep(0.1)  # rechecks every 100ms
+    try:
+        mdict = json.loads(message)
+    except:
+        print('unable to parse message into dictionary:\n {}\n'.format(message), file=sys.stderr)
+        return
+    #make sure not to excede the max threads
+    while (threadPool[0] <= 0):
+        time.sleep(0.1) #rechecks every 100ms
     lock.acquire()
     threadPool[0] -= 1
     lock.release()
     conn = connect()
-    if conn:
+
+    if conn:    
         try:
-            mdict = json.loads(message)
             if mdict['type'] == 'transaction':
                 trans_c.consume(mdict, conn)
             elif mdict['type'] == 'card_transaction':
@@ -52,18 +61,38 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
                 loan_payment_c.consume(mdict, conn)
             elif mdict['type'] == 'stock':
                 stock_c.consume(mdict, conn)
+                failover(mdict)
             else:
                 print("unrecognized type")
             conn.commit()
 
         except:
-            print('unable to parse message:\n {}\n'.format(message), file=sys.stderr)
+            print('unable to process message:\n {}\n'.format(message), file=sys.stderr)
+            failover(mdict)
+            
         finally:
             conn.close()
             lock.acquire()
             threadPool[0] += 1
             lock.release()
-
+    else:
+        failover(mdict)
+        lock.acquire()
+        threadPool[0] += 1
+        lock.release()
+        
+            
+def failover(message: dict):
+    try:
+        message['key']=random.randrange(0, 32768) #random 16 bit number to uniquify the entry
+        message_dec = json.loads(json.dumps(message), parse_float=Decimal) # "Float types are not supported. Use Decimal types instead." - Boto3, 2021
+        serializer = TypeSerializer() #Dynamo/boto doesn't except raw jsons
+        dyn = boto3.client('dynamodb', region_name='us-east-1',
+            aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
+        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item={k: serializer.serialize(v) for k, v in message_dec.items()}) #I stole this code
+    except:
+        print('Failed to write to DynamoDB!:\n', file=sys.stderr)
+        traceback.print_exc()
 
 # Helper function to multithread this workload
 # This workload is bound by network delays, and so more threads is better

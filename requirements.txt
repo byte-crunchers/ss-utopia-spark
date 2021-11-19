@@ -1,3 +1,4 @@
 jaydebeapi
 python-dateutil
 pandas
+boto3
