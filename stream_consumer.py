@@ -80,6 +80,7 @@ def failover(message: dict):
         dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item=message)
     except:
         print('Failed to write to DynamoDB!:\n {}\n'.format(message), file=sys.stderr)
+        traceback.print_exc()
         
 
 
