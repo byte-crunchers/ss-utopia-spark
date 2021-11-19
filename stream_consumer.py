@@ -36,6 +36,11 @@ def connect():
 
 
 def process_message(message: str, lock: threading.Lock, threadPool: int) -> None:
+    try:
+        mdict = json.loads(message)
+    except:
+        print('unable to parse message into dictionary:\n {}\n'.format(message), file=sys.stderr)
+        return
     #make sure not to excede the max threads
     while (threadPool[0] <= 0):
         time.sleep(0.1) #rechecks every 100ms
@@ -44,33 +49,30 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
     lock.release()
     conn = connect()
 
-    if conn:
-        try:
-            mdict = json.loads(message)
-            try:    
-                if mdict['type'] == 'transaction':
-                    trans_c.consume(mdict, conn)
-                elif mdict['type'] == 'card_transaction':
-                    card_c.consume(mdict, conn)
-                elif mdict['type'] == 'loan_payment':
-                    loan_payment_c.consume(mdict, conn)
-                elif mdict['type'] == 'stock':
-                    stock_c.consume(mdict, conn)
-                else:
-                    print("unrecognized type")
-                conn.commit()
+    if conn:    
+        try:    
+            if mdict['type'] == 'transaction':
+                trans_c.consume(mdict, conn)
+            elif mdict['type'] == 'card_transaction':
+                card_c.consume(mdict, conn)
+            elif mdict['type'] == 'loan_payment':
+                loan_payment_c.consume(mdict, conn)
+            elif mdict['type'] == 'stock':
+                stock_c.consume(mdict, conn)
+            else:
+                print("unrecognized type")
+            conn.commit()
 
-            except:
-                print('unable to process message:\n {}\n'.format(message), file=sys.stderr)
-                failover(mdict)
-                
-            finally:
-                conn.close()
-                lock.acquire()
-                threadPool[0] += 1
-                lock.release()
-        except: #jsonify message failec
-            print('unable to parse message into dictionary:\n {}\n'.format(message), file=sys.stderr)
+        except:
+            print('unable to process message:\n {}\n'.format(message), file=sys.stderr)
+            failover(mdict)
+            
+        finally:
+            conn.close()
+            lock.acquire()
+            threadPool[0] += 1
+            lock.release()
+        
             
 def failover(message: dict):
     try:
@@ -79,7 +81,7 @@ def failover(message: dict):
             aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
         dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item=message)
     except:
-        print('Failed to write to DynamoDB!:\n {}\n'.format(message), file=sys.stderr)
+        print('Failed to write to DynamoDB!:\n', file=sys.stderr)
         traceback.print_exc()
         
 
