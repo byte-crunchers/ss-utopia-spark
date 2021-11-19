@@ -4,16 +4,26 @@ import os
 import sys
 import traceback
 import threading
+import random
 
 import jaydebeapi
 from pyspark import SparkContext
 from pyspark.streaming import StreamingContext
 from pyspark.streaming.kinesis import KinesisUtils, InitialPositionInStream
+import boto3
 
 import card_transactions.card_transaction_consumer as card_c
 import loan_payments.lp_consumer as loan_payment_c
 import stocks.stock_consumer as stock_c
 import transactions.transaction_consumer as trans_c
+
+
+my_config = boto3.Config(
+    region_name='us-east-1'
+)
+
+dyn = boto3.client('dynamodb', config=my_config, 
+    aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
 
 
 def connect():
@@ -41,29 +51,44 @@ def process_message(message: str, lock: threading.Lock, threadPool: int) -> None
     threadPool[0] -= 1
     lock.release()
     conn = connect()
+
     if conn:
         try:
             mdict = json.loads(message)
-            if mdict['type'] == 'transaction':
-                trans_c.consume(mdict, conn)
-            elif mdict['type'] == 'card_transaction':
-                card_c.consume(mdict, conn)
-            elif mdict['type'] == 'loan_payment':
-                loan_payment_c.consume(mdict, conn)
-            elif mdict['type'] == 'stock':
-                stock_c.consume(mdict, conn)
-            else:
-                print("unrecognized type")
-            conn.commit()
+            try:    
+                if mdict['type'] == 'transaction':
+                    trans_c.consume(mdict, conn)
+                elif mdict['type'] == 'card_transaction':
+                    card_c.consume(mdict, conn)
+                elif mdict['type'] == 'loan_payment':
+                    loan_payment_c.consume(mdict, conn)
+                elif mdict['type'] == 'stock':
+                    stock_c.consume(mdict, conn)
+                else:
+                    print("unrecognized type")
+                conn.commit()
 
-        except:
-            print('unable to parse message:\n {}\n'.format(message), file=sys.stderr)
-        finally:
-            conn.close()
-            lock.acquire()
-            threadPool[0] += 1
-            lock.release()
-
+            except:
+                print('unable to process message:\n {}\n'.format(message), file=sys.stderr)
+                failover(mdict)
+                
+            finally:
+                conn.close()
+                lock.acquire()
+                threadPool[0] += 1
+                lock.release()
+        except: #jsonify message failec
+            print('unable to parse message into dictionary:\n {}\n'.format(message), file=sys.stderr)
+            
+def failover(message: dict):
+    try:
+        message['key']=random.randrange(0, 32768) #random 16 bit number to uniquify the entry
+        dyn = boto3.client('dynamodb', region_name='us-east-1',
+            aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
+        dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item=message)
+    except:
+        print('Failed to write to DynamoDB!:\n {}\n'.format(message), file=sys.stderr)
+        
 
 
 #Helper function to multithread this workload
@@ -114,6 +139,28 @@ def consume():
     print("end of script")
     ssc.stop()
     sc.stop()
+
+my_config = Config(
+    region_name='us-east-1'
+)
+
+
+def loopers(accounts: tuple, fake: Faker, kin) -> None:
+    accounts_sample = random.sample(accounts, 2)  # use so that we can have two random, unique accounts
+    trans = tp.Transaction(fake, accounts_sample[0][0], accounts_sample[1][0])
+    trans.type = 'transaction' #for the consumer to know what type of message it is
+    #print(json.dumps(trans.__dict__, default=str))
+    kin.put_record(StreamName='byte-henry', Data=json.dumps(trans.__dict__, default=str), PartitionKey='trans key')
+
+
+def stream(interval: float = 5, chance: float = 1) -> None:
+    accounts = tp.get_accounts(tp.connect())
+    if len(accounts) == 0:
+        print("ERROR: missing accounts from database")
+        return 1
+    kin = boto3.client('kinesis', config=my_config, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+
+
 
 if __name__ == "__main__":
     consume()
