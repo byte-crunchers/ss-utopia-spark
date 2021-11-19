@@ -160,4 +160,5 @@ def failover(message: dict):
             aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
         dyn.put_item(TableName='utopia-failover-HA-DynamoDB', Item=message)
     except:
-        print('Failed to write to DynamoDB!:\n {}\n'.format(message), file=sys.stderr)
+        print('Failed to write to DynamoDB!:\n', file=sys.stderr)
+        traceback.print_exc()
