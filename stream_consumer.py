@@ -18,14 +18,6 @@ import stocks.stock_consumer as stock_c
 import transactions.transaction_consumer as trans_c
 
 
-my_config = boto3.Config(
-    region_name='us-east-1'
-)
-
-dyn = boto3.client('dynamodb', config=my_config, 
-    aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
-
-
 def connect():
     mysql_pass = os.environ.get("MYSQL_PASS")
     mysql_user = os.environ.get("MYSQL_USER")
@@ -139,27 +131,6 @@ def consume():
     print("end of script")
     ssc.stop()
     sc.stop()
-
-my_config = Config(
-    region_name='us-east-1'
-)
-
-
-def loopers(accounts: tuple, fake: Faker, kin) -> None:
-    accounts_sample = random.sample(accounts, 2)  # use so that we can have two random, unique accounts
-    trans = tp.Transaction(fake, accounts_sample[0][0], accounts_sample[1][0])
-    trans.type = 'transaction' #for the consumer to know what type of message it is
-    #print(json.dumps(trans.__dict__, default=str))
-    kin.put_record(StreamName='byte-henry', Data=json.dumps(trans.__dict__, default=str), PartitionKey='trans key')
-
-
-def stream(interval: float = 5, chance: float = 1) -> None:
-    accounts = tp.get_accounts(tp.connect())
-    if len(accounts) == 0:
-        print("ERROR: missing accounts from database")
-        return 1
-    kin = boto3.client('kinesis', config=my_config, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
-
 
 
 if __name__ == "__main__":
