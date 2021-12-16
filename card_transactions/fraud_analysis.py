@@ -9,13 +9,13 @@ class Analyzer:
         this.acc=acc
         this.conn=conn
         this.fraud_value=0.0 #analytical value of how likely this transafction is fraudulent
-        this.threshold_fraud=os.environ.get("THRESHOLD_FRAUD") #a fraud_value above this threshold will trigger fraud prevention
-        this.threshold_velocity=os.environ.get("THRESHOLD_VELOCITY") #a fraud value above this will trigger a velocity analysis
-        this.weighting_cvc=os.environ.get("WEIGHTING_CVC")
-        this.weighting_amount=os.environ.get("WEIGHTING_AMOUNT")
-        this.weighting_location=os.environ.get("WEIGHTING_LOCATION")
-        this.weighting_velocity=os.environ.get("WEIGHTING_VELOCITY")
-        this.sample_chance=os.environ.get("FRAUD_SAMPLE_CHANCE")
+        this.threshold_fraud=float(os.environ.get("THRESHOLD_FRAUD")) #a fraud_value above this threshold will trigger fraud prevention
+        this.threshold_velocity=float(os.environ.get("THRESHOLD_VELOCITY")) #a fraud value above this will trigger a velocity analysis
+        this.weighting_cvc=float(os.environ.get("WEIGHTING_CVC"))
+        this.weighting_amount=float(os.environ.get("WEIGHTING_AMOUNT"))
+        this.weighting_location=float(os.environ.get("WEIGHTING_LOCATION"))
+        this.weighting_velocity=float(os.environ.get("WEIGHTING_VELOCITY"))
+        this.sample_chance=float(os.environ.get("FRAUD_SAMPLE_CHANCE"))
         
 
     def anal_cvc(this): #checks to see if there is a cvc on this transaction (amazon has none)
@@ -43,11 +43,13 @@ class Analyzer:
         current_date = datetime.datetime.now()
         window = current_date - datetime.timedelta(days = 3)
         comparison_date = current_date - datetime.timedelta(days = 33)
-        recent = curs.execute("SELECT SUM(transfer_value) FROM card_transactions \
-                               WHERE card_num = 4319231021984280 AND time_stamp > '" + str(window) +  "'")[0]
-        history = curs.execute("SELECT SUM(transfer_value) FROM card_transactions \
-                                WHERE card_num = 4319231021984280 \
-                                AND time_stamp BTWEEN '" + str(window) +  "' AND '" + str(comparison_date) + "'")[0]
+        curs.execute("SELECT SUM(transfer_value) FROM card_transactions \
+                      WHERE card_num = " + str(this.trans.card) + " AND time_stamp > '" + str(window) +  "'")
+        recent = curs.fetchone()[0]
+        curs.execute("SELECT sum(transfer_value) FROM card_transactions \
+                      WHERE card_num = " + str(this.trans.card) + " \
+                      AND time_stamp BETWEEN '" + str(comparison_date) +  "' AND '" + str(window) + "'")
+        history = curs.fetchone()[0]
         this.fraud_value += (10 * recent / history - 1) * this.weighting_velocity
 
         
