@@ -102,7 +102,7 @@ def test_good(connect_h2):
                                               (9002, 2, 'Checking', 500.00, 0, null, null, 0, 1, 1, 1)")
     curs.execute("INSERT INTO cards VALUES (9002, 1234567890123456, 1234, 123, 456, '2023-10-30')")
     trans = {"card_num": 1234567890123456, "merchant_account_id": 9001, "memo": "Reason, your viceroy in me, me should defend", "transfer_value": 420.00, \
-        "pin": None, "cvc1": None, "cvc2": 456, "location": "VA", "time_stamp": "2021-10-06 11:28:47.209401", "status": 0, "type": "card_transaction"}
+        "pin": None, "cvc1": None, "cvc2": 456, "location": "US", "time_stamp": "2021-10-06 11:28:47.209401", "status": 0, "type": "card_transaction"}
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")
@@ -123,7 +123,7 @@ def test_good_credit(connect_h2):
                                               (9004, 2, 'Checking', 500.00, 0, null, null, 0, 1, 1, 1)")
     curs.execute("INSERT INTO cards VALUES (9003, 1234567890123456, null, 123, 456, '2023-10-30')")
     trans = {"card_num": 1234567890123456, "merchant_account_id": 9004, "memo": "But is captured, and proves weak or untrue", "transfer_value": 400.00, \
-        "pin": None, "cvc1": 123, "cvc2": None, "location": "VA", "time_stamp": "2021-10-06 11:28:47.209401", "status": 0, "type": "card_transaction"}
+        "pin": None, "cvc1": 123, "cvc2": None, "location": "US", "time_stamp": "2021-10-06 11:28:47.209401", "status": 0, "type": "card_transaction"}
     ctc.consume(trans, connect_h2)
 
     curs.execute("SELECT * FROM card_transactions WHERE card_num = 1234567890123456")

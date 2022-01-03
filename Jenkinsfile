@@ -101,6 +101,15 @@ pipeline {
                 BATCH_LENGTH = '10' //10 second batches because the processing of each batch takes a minimum of a few seconds.
                 SCALING_INTERVAL = '60' //every interval the autoscaler checks to see if more or fewer pods are needed
 
+                //fraud stuff
+                THRESHOLD_FRAUD='1' //the total fraud value that triggers a fraud alert
+                THRESHOLD_VELOCITY='0.3' //the total fraud value that must be reached before a velocity analysis is triggered
+
+                WEIGHTING_CVC='0.2' //the weighting of the cvc analysis
+                WEIGHTING_AMOUNT='1' //weighting of the amount analysis (eg 1 means that a transaction for half the available funds would be a fraud value of 0.5)
+                WEIGHTING_LOCATION='0.6' //weighting of location analysis
+                WEIGHTING_VELOCITY='1' //weighting of velocity analysis
+                FRAUD_SAMPLE_CHANCE='0.1' //chance that a transaction will have its velocity analyzed even if it doesn't meet the threshold
 
              }
             steps{
@@ -126,13 +135,20 @@ pipeline {
                     --conf spark.kubernetes.driverEnv.AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
                     --conf spark.kubernetes.driverEnv.CONSUMER_NAME=cloud-consumer \
                     --conf spark.kubernetes.driverEnv.BATCH_LENGTH=${BATCH_LENGTH} \
+                    --conf spark.kubernetes.driverEnv.PARTITIONS=${PARTITIONS} \
                     --conf spark.executorEnv.MYSQL_USER=${MYSQL_USER} \
                     --conf spark.executorEnv.MYSQL_PASS=${MYSQL_PASS} \
                     --conf spark.executorEnv.MYSQL_LOC=${MYSQL_LOC}  \
                     --conf spark.executorEnv.ACCESS_KEY=${AWS_ACCESS_KEY_ID} \
                     --conf spark.executorEnv.SECRET_KEY=${AWS_SECRET_ACCESS_KEY} \
                     --conf spark.executorEnv.MAX_THREADS=${THREADS} \
-                    --conf spark.kubernetes.driverEnv.PARTITIONS=${PARTITIONS} \
+                    --conf spark.executorEnv.THRESHOLD_FRAUD=${THRESHOLD_FRAUD} \
+                    --conf spark.executorEnv.THRESHOLD_VELOCITY=${THRESHOLD_VELOCITY}  \
+                    --conf spark.executorEnv.WEIGHTING_CVC=${WEIGHTING_CVC} \
+                    --conf spark.executorEnv.WEIGHTING_AMOUNT=${WEIGHTING_AMOUNT} \
+                    --conf spark.executorEnv.WEIGHTING_LOCATION=${WEIGHTING_LOCATION} \
+                    --conf spark.executorEnv.WEIGHTING_VELOCITY=${WEIGHTING_VELOCITY} \
+                    --conf spark.executorEnv.FRAUD_SAMPLE_CHANCE=${FRAUD_SAMPLE_CHANCE} \
                     --conf spark.kubernetes.authenticate.driver.serviceAccountName=spark \
                     --conf spark.kubernetes.container.image.pullPolicy=Always \
                     --conf spark.kubernetes.container.image=${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest \
