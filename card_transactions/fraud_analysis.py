@@ -10,6 +10,7 @@ class Analyzer:
         this.acc=acc
         this.conn=conn
         this.fraud_value=0.0 #analytical value of how likely this transafction is fraudulent
+        print("TEST ---- THRESHOLD_FRAUD = {} ---- TEST".format(os.environ.get("THRESHOLD_FRAUD")))
         this.threshold_fraud=float(os.environ.get("THRESHOLD_FRAUD")) #a fraud_value above this threshold will trigger fraud prevention
         this.threshold_velocity=float(os.environ.get("THRESHOLD_VELOCITY")) #a fraud value above this will trigger a velocity analysis
         this.weighting_cvc=float(os.environ.get("WEIGHTING_CVC"))
