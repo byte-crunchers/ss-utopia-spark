@@ -62,9 +62,8 @@ pipeline {
                         docker.withRegistry("https://${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com", "ecr:us-east-1:jenkins-ec2-user") {
                             docker.image("ss-utopia-spark/spark-py:latest").push()
                         }
-                    }//prune
-                    //sh 'aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com'
-                    //sh 'docker push ${ACC_ID}.dkr.ecr.us-east-1.amazonaws.com/ss-utopia-spark/spark-py:latest'
+                    }
+                    sh 'docker system prune -f'
                 }
             }
         }
