@@ -35,6 +35,7 @@ class Account:
     
     def __init__(self, row) -> None:
         self
+        self.id = row[0]
         self.user = row[1]
         self.account_type = row[2]
         self.balance = row[3]

@@ -86,6 +86,9 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         analyzer.analyze()
         if analyzer.fraud_value > analyzer.threshold_fraud:
             trans.status = TransactionStatus.potential_fraud
+            #deactivate account
+            query = 'UPDATE accounts SET active = 0 WHERE id = ?'
+            curs.execute(query, (origin.id))
             return record_anomoly(trans, conn, message)
 
         
