@@ -25,7 +25,7 @@ class Alerter:
         return date.strftime("%A, %d %B %Y at %I:%M %p")
 
     def init_body(self) -> str:
-        return  "Dear " + self.name + ",\nWe have detected a potentially fraudulent transaction from your account and your account has been frozen. \n" \
+        return  "Dear " + self.name + ",\n\nWe have detected a potentially fraudulent transaction from your account and your account has been frozen. \n" \
                 "The transaction is from account number "+str(self.acc_num)+" in the amount of $"+str(self.value)+" on "+self.date+".\n" \
                 "The memo for this transaction is: "+self.memo+".\nIf you do not recognize this transaction, please contact us immediately at 1-800-555-4862 or online at utopia-financial.com.\n" \
                 "If you do recognize this transaction, you best hope we implement account reactivation soon.\n\n" \

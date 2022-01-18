@@ -12,6 +12,7 @@ from boto3.dynamodb.types import TypeSerializer
 from card_transactions.fraud_analysis import Analyzer as FraudAnalyzer
 from card_transactions.classes import Card_Transaction, Account, Card
 from decimal import Decimal
+from card_transactions.alert_email import Alerter
 
 class TransactionStatus(IntEnum):
     accepted = 1
@@ -88,7 +89,15 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
             trans.status = TransactionStatus.potential_fraud
             #deactivate account
             query = 'UPDATE accounts SET active = 0 WHERE id = ?'
-            curs.execute(query, (origin.id))
+            curs.execute(query, (origin.id,))
+            #get user details
+            query =  '''SELECT users.first_name, users.last_name, users.email FROM accounts
+                        INNER JOIN users ON users.id = accounts.users_id 
+                        WHERE accounts.id = ?'''
+            curs.execute(query, (origin.id,))
+            user_ret = curs.fetchone() #first_name, last_name, email
+            alert = Alerter(user_ret[2], (user_ret[0] + " " + user_ret[1]), origin.id, trans)
+            alert.send_alert()
             return record_anomoly(trans, conn, message)
 
         
