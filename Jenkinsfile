@@ -5,7 +5,7 @@ pipeline {
         stage('Setup'){
             
             environment {
-                SPARK_VERSION = '3.2.0'
+                SPARK_VERSION = '3.2.1'
                 ASSEMBLY_SPARK_VERSION = '3.3.0'
                 HADOOP_VERSION = '3.2'
                 MYSQL_JAR_VERSION = '8.0.27'
