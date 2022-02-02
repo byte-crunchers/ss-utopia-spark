@@ -5,3 +5,5 @@ __pycache__
 dbkey.json
 coverage.xml
 awskey.json
+*.csv
+*.csv
