@@ -50,12 +50,12 @@ class Analyzer:
         #if the user has no recent activity, skip this check
         if recent == None or recent < 10:
             return
-        print("recent: " + str(recent))
+        #print("recent: " + str(recent))
         curs.execute("SELECT sum(transfer_value) FROM card_transactions \
                       WHERE card_num = " + str(this.trans.card) + " \
                       AND time_stamp BETWEEN '" + str(comparison_date) +  "' AND '" + str(window) + "'")
         history = curs.fetchone()[0]
-        print ("history: " + str(history))
+        #print ("history: " + str(history))
         #if the user has no history, add half the velocity weighting
         if history == None or history < 100:
             this.fraud_value += this.weighting_velocity * 0.5
@@ -66,20 +66,20 @@ class Analyzer:
     def analyze(this):
         this.anal_cvc()
         cv = this.fraud_value
-        print("cvc: "+ str(cv))
+        #print("cvc: "+ str(cv))
         this.anal_amount()
         av = this.fraud_value
-        print("amount: " + str(av - cv))
+        #print("amount: " + str(av - cv))
         this.anal_location()
         lv = this.fraud_value
-        print("location: " + str(lv - av))
+        #print("location: " + str(lv - av))
 
         #only analyze velocity (two extra db querries) if we have a reason to or by random chance
         if this.fraud_value > this.threshold_velocity or random.random() < this.sample_chance:
             this.anal_velocity()
             
             vv = this.fraud_value
-            print("velocity: " + str(vv - lv))
+            #print("velocity: " + str(vv - lv))
         
         
     
