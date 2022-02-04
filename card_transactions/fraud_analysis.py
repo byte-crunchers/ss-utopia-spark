@@ -64,11 +64,21 @@ class Analyzer:
     #entrypoint function
     def analyze(this):
         this.anal_cvc()
+        cv = this.fraud_value
+        print("cvc: "+ cv)
         this.anal_amount()
+        av = this.fraud_value
+        print("amount: " + av - cv)
         this.anal_location()
+        lv = this.fraud_value
+        print("location: " + lv - av)
+
         #only analyze velocity (two extra db querries) if we have a reason to or by random chance
         if this.fraud_value > this.threshold_velocity or random.random() < this.sample_chance:
             this.anal_velocity()
+            
+            vv = this.fraud_value
+            print("velocity: " + vv - lv)
         
         
     
