@@ -1,4 +1,5 @@
 import boto3
+import os
 from botocore.exceptions import ClientError
 from card_transactions.classes import Card_Transaction
 from datetime import datetime
@@ -41,7 +42,8 @@ class Alerter:
 
         charset = "UTF-8"
 
-        client = boto3.client('ses')
+        client = boto3.client('ses', region_name='us-east-1',
+            aws_access_key_id=os.environ.get("ACCESS_KEY"), aws_secret_access_key=os.environ.get("SECRET_KEY"))
         response = None
         try:
             response = client.send_email(
