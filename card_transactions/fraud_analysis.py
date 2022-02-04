@@ -50,11 +50,12 @@ class Analyzer:
         #if the user has no recent activity, skip this check
         if recent == None or recent < 10:
             return
-        
+        print("recent: " + str(recent))
         curs.execute("SELECT sum(transfer_value) FROM card_transactions \
                       WHERE card_num = " + str(this.trans.card) + " \
                       AND time_stamp BETWEEN '" + str(comparison_date) +  "' AND '" + str(window) + "'")
         history = curs.fetchone()[0]
+        print ("history: " + str(history))
         #if the user has no history, add half the velocity weighting
         if history == None or history < 100:
             this.fraud_value += this.weighting_velocity * 0.5
