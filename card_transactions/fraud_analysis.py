@@ -69,7 +69,6 @@ class Analyzer:
         #only analyze velocity (two extra db querries) if we have a reason to or by random chance
         if this.fraud_value > this.threshold_velocity or random.random() < this.sample_chance:
             this.anal_velocity()
-        print (this.fraud_value)
         
         
     
