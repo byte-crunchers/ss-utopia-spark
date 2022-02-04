@@ -88,8 +88,8 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
         if analyzer.fraud_value > analyzer.threshold_fraud:
             trans.status = TransactionStatus.potential_fraud
             #deactivate account
-            query = 'UPDATE accounts SET active = 0 WHERE id = ?'
-            curs.execute(query, (origin.id,))
+            #query = 'UPDATE accounts SET active = 0 WHERE id = ?'
+            #curs.execute(query, (origin.id,))
             #get user details
             query =  '''SELECT users.first_name, users.last_name, users.email FROM accounts
                         INNER JOIN users ON users.id = accounts.users_id 
