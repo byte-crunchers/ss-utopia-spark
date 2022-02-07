@@ -96,8 +96,8 @@ def consume(message: dict, conn: jaydebeapi.Connection) -> None:
                         WHERE accounts.id = ?'''
             curs.execute(query, (origin.id,))
             user_ret = curs.fetchone() #first_name, last_name, email
-            alert = Alerter(user_ret[2], (user_ret[0] + " " + user_ret[1]), origin.id, trans)
-            alert.send_alert()
+            #alert = Alerter(user_ret[2], (user_ret[0] + " " + user_ret[1]), origin.id, trans)
+            #alert.send_alert()
             return record_anomoly(trans, conn, message)
 
         
