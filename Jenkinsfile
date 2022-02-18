@@ -5,7 +5,7 @@ pipeline {
         stage('Setup'){
             
             environment {
-                SPARK_VERSION = '3.2.0'
+                SPARK_VERSION = '3.2.1'
                 ASSEMBLY_SPARK_VERSION = '3.3.0'
                 HADOOP_VERSION = '3.2'
                 MYSQL_JAR_VERSION = '8.0.27'
@@ -93,7 +93,7 @@ pipeline {
                 MAX_EXECUTORS = '6'
                 NUM_CORES = '2'
                 THREADS = '6' //how many threads and therefore db connections per task
-                EXECUTOR_MEMORY = "1500m" 
+                EXECUTOR_MEMORY = "2048m" 
                 DRIVER_MEMORY = "2g" 
                 SUSTAINED_TIMEOUT = "4m" //how long after requesting new executors does it ask for more if need be
                 PARTITIONS = '10' 
